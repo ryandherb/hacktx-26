@@ -1,0 +1,48 @@
+[
+  {
+    "id": "maria",
+    "name": "Maria (stable earner)",
+    "nessie_customer_id": null,
+    "vehicle_model": "Camry",
+    "vehicle_year": 2012,
+    "mileage": 148000,
+    "zip_code": "78705",
+    "loan_balance": 0,
+    "monthly_payment": 0,
+    "open_issue": "transmission slipping",
+    "service_history": [
+      {"month": "2025-02", "description": "Brake pads and rotors", "cost": 540},
+      {"month": "2025-09", "description": "Alternator replacement", "cost": 610}
+    ]
+  },
+  {
+    "id": "dev",
+    "name": "Dev (tight budget)",
+    "nessie_customer_id": null,
+    "vehicle_model": "Corolla",
+    "vehicle_year": 2010,
+    "mileage": 171000,
+    "zip_code": "78741",
+    "loan_balance": 0,
+    "monthly_payment": 0,
+    "open_issue": "A/C compressor failing",
+    "service_history": [
+      {"month": "2025-05", "description": "Timing chain service", "cost": 900}
+    ]
+  },
+  {
+    "id": "sam",
+    "name": "Sam (still paying the car off)",
+    "nessie_customer_id": null,
+    "vehicle_model": "RAV4",
+    "vehicle_year": 2014,
+    "mileage": 112000,
+    "zip_code": "78758",
+    "loan_balance": 4200,
+    "monthly_payment": 310,
+    "open_issue": "check engine light, oxygen sensor",
+    "service_history": [
+      {"month": "2025-06", "description": "Struts and tires", "cost": 1450}
+    ]
+  }
+]
