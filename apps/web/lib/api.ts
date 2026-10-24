@@ -31,10 +31,17 @@ export type Market = {
   repair_quotes: { shop: string; estimate: number; source: string }[];
 };
 
+export type KRTResult = {
+  keepResult: number;
+  refinanceResult: number;
+  tradeResult: number;
+}
+
 export type Analysis = {
   profile_id: string;
   curve: CurvePoint[];
   crossover_month: number | null;
+  result: KRTResult
   recommendation: "keep" | "replace_now" | "replace_later";
   affordability: Affordability;
   market: Market;

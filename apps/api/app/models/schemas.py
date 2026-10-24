@@ -52,12 +52,17 @@ class CurvePoint(BaseModel):
     keep_cost: float
     replace_cost: float
 
+class KRTResult(BaseModel):
+    keepResult: float
+    refinanceResult: float
+    tradeResult: float
 
 class AnalysisResult(BaseModel):
     profile_id: str
     curve: list[CurvePoint]
     crossover_month: int | None
-    recommendation: str  # "keep" | "replace_now" | "replace_later"
+    result: KRTResult
+    reccomendation: str # "keep" | "trade" | "refinance"
     affordability: AffordabilityResult
     market: MarketData
     explanation: str
