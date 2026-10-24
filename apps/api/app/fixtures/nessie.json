@@ -1,0 +1,50 @@
+{
+  "maria": {
+    "accounts": [
+      {"_id": "acc-maria-chk", "type": "Checking", "nickname": "Checking", "balance": 4200},
+      {"_id": "acc-maria-sav", "type": "Savings", "nickname": "Savings", "balance": 9800}
+    ],
+    "deposits": [
+      {"amount": 4600, "transaction_date": "2026-08-01", "description": "Payroll"},
+      {"amount": 4600, "transaction_date": "2026-09-01", "description": "Payroll"},
+      {"amount": 4600, "transaction_date": "2026-10-01", "description": "Payroll"}
+    ],
+    "purchases": [
+      {"amount": 3100, "transaction_date": "2026-08-15", "description": "Monthly spending"},
+      {"amount": 3250, "transaction_date": "2026-09-15", "description": "Monthly spending"},
+      {"amount": 3050, "transaction_date": "2026-10-15", "description": "Monthly spending"}
+    ]
+  },
+  "dev": {
+    "accounts": [
+      {"_id": "acc-dev-chk", "type": "Checking", "nickname": "Checking", "balance": 650},
+      {"_id": "acc-dev-sav", "type": "Savings", "nickname": "Savings", "balance": 900}
+    ],
+    "deposits": [
+      {"amount": 2300, "transaction_date": "2026-08-01", "description": "Payroll"},
+      {"amount": 2100, "transaction_date": "2026-09-01", "description": "Payroll"},
+      {"amount": 2400, "transaction_date": "2026-10-01", "description": "Payroll"}
+    ],
+    "purchases": [
+      {"amount": 2150, "transaction_date": "2026-08-15", "description": "Monthly spending"},
+      {"amount": 2300, "transaction_date": "2026-09-15", "description": "Monthly spending"},
+      {"amount": 2200, "transaction_date": "2026-10-15", "description": "Monthly spending"}
+    ]
+  },
+  "sam": {
+    "accounts": [
+      {"_id": "acc-sam-chk", "type": "Checking", "nickname": "Checking", "balance": 2100},
+      {"_id": "acc-sam-sav", "type": "Savings", "nickname": "Savings", "balance": 3500}
+    ],
+    "deposits": [
+      {"amount": 3600, "transaction_date": "2026-08-01", "description": "Payroll"},
+      {"amount": 3600, "transaction_date": "2026-09-01", "description": "Payroll"},
+      {"amount": 3600, "transaction_date": "2026-10-01", "description": "Payroll"}
+    ],
+    "purchases": [
+      {"amount": 3100, "transaction_date": "2026-08-15", "description": "Monthly spending"},
+      {"amount": 3300, "transaction_date": "2026-09-15", "description": "Monthly spending"},
+      {"amount": 3000, "transaction_date": "2026-10-15", "description": "Monthly spending"}
+    ]
+  }
+}

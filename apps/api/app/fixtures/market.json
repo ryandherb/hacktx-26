@@ -1,0 +1,38 @@
+{
+  "maria": {
+    "current_vehicle_value_low": 4200,
+    "current_vehicle_value_high": 5600,
+    "replacement_options": [
+      {"name": "2021 Camry LE (CPO)", "price": 24500, "kind": "cpo"},
+      {"name": "2025 Camry LE", "price": 29800, "kind": "new"}
+    ],
+    "repair_quotes": [
+      {"shop": "Austin Transmission Co.", "estimate": 3200, "source": "fixture"},
+      {"shop": "Central TX Auto Care", "estimate": 2800, "source": "fixture"}
+    ]
+  },
+  "dev": {
+    "current_vehicle_value_low": 2200,
+    "current_vehicle_value_high": 3200,
+    "replacement_options": [
+      {"name": "2019 Corolla LE (used)", "price": 16900, "kind": "used"},
+      {"name": "2025 Corolla LE", "price": 23000, "kind": "new"}
+    ],
+    "repair_quotes": [
+      {"shop": "South Austin Auto A/C", "estimate": 1150, "source": "fixture"},
+      {"shop": "Quick Fix Garage", "estimate": 980, "source": "fixture"}
+    ]
+  },
+  "sam": {
+    "current_vehicle_value_low": 7800,
+    "current_vehicle_value_high": 9600,
+    "replacement_options": [
+      {"name": "2021 RAV4 XLE (CPO)", "price": 28900, "kind": "cpo"},
+      {"name": "2025 RAV4 LE", "price": 32500, "kind": "new"}
+    ],
+    "repair_quotes": [
+      {"shop": "North Austin Toyota Service", "estimate": 420, "source": "fixture"},
+      {"shop": "Neighborhood Auto", "estimate": 310, "source": "fixture"}
+    ]
+  }
+}
