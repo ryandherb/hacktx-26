@@ -4,8 +4,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from .pre_quote_profiles import survey_profile_records
-from .pre_quote_schemas import PreQuoteSurveyRequest, PreQuoteSurveyResult
+from .seeds.pre_quote_profiles import survey_profile_records
+from .models.pre_quote_schemas import PreQuoteSurveyRequest, PreQuoteSurveyResult
 from .pre_quote_service import prepare_survey
 
 router = APIRouter(tags=["Pre-Quote Survey"])

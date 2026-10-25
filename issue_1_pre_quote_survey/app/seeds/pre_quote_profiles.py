@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-PROFILE_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "toyota_profiles.json"
+PROFILE_FIXTURE = Path(__file__).resolve().parent / "toyota_profiles.json"
 
 
 def load_profile_records() -> list[dict]:

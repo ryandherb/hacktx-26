@@ -1,11 +1,11 @@
-"""Standalone review server; mount pre_quote_router.router in the shared app after merging."""
+"""Standalone review server; mount app.pre_quote_routes.router in the shared app after merging."""
 
 import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .pre_quote_router import router
+from .app.pre_quote_routes import router
 
 app = FastAPI(title="Issue #1: Pre-Quote Survey API")
 app.add_middleware(
