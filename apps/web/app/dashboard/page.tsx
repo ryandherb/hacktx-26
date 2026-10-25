@@ -203,7 +203,7 @@ export default function Dashboard() {
       {advisor.state.bankModal && (
         <BankConnectModal profileId={profile.id} firstName={d.firstName}
           onClose={() => advisor.update({ bankModal: false })}
-          onConnected={(bank) => advisor.update({ bank, bankModal: false, bankSkipped: false })} />
+          onConnected={(bank) => advisor.update({ bank, bankModal: false, bankSkipped: false, situation: { ...advisor.state.situation, down_payment: bank.availableCash } })} />
       )}
       {advisor.state.view === "minimized" && (
         <MinimizedPill stepLabel={advisorStep ? `Step ${advisorStep} of 3` : "Ready to start"} onResume={openAdvisor} />

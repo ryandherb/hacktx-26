@@ -214,6 +214,10 @@ export type BankSnapshot = {
   monthlySpending: number;
   carInsurance: number | null;
   transactionCount: number;
+  // Display-only estimate: savings above a one-month spending cushion, rounded down to $250.
+  availableCash: number;
+  // "ToyotaAI found" observations, computed by plain code from the transactions (no AI, nothing invented).
+  insights: string[];
 };
 
 export function bankAccountsFor(profileId: string) {
@@ -229,15 +233,31 @@ const monthlyAvg = (items: { amount: number; date: string }[]) => {
 export async function connectBank(profileId: string, accountIds: string[]): Promise<Served<BankSnapshot>> {
   const f = BANK_FIXTURES[profileId] ?? BANK_FIXTURES.dev;
   const insurance = f.purchases.filter((p) => /insurance/i.test(p.description));
+  const accounts = f.accounts.filter((a) => accountIds.includes(a.id));
+  const income = Math.round(monthlyAvg(f.deposits));
+  const spending = Math.round(monthlyAvg(f.purchases));
+  const carInsurance = insurance.length ? Math.round(monthlyAvg(insurance)) : null;
+  const savings = accounts.filter((a) => a.type === "Savings").reduce((s, a) => s + a.balance, 0);
+  const availableCash = Math.max(0, Math.floor((savings - spending) / 250) * 250);
+  const pay = f.deposits.map((d) => d.amount);
+  const steady = Math.max(...pay) - Math.min(...pay) <= 0.05 * income;
+  const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
+  const insights = [
+    steady ? `Steady paycheck of ${money(income)} a month` : `Paychecks vary from ${money(Math.min(...pay))} to ${money(Math.max(...pay))} a month`,
+    income >= spending ? `You keep about ${money(income - spending)} a month after spending` : `Spending runs about ${money(spending - income)} a month above income`,
+    ...(carInsurance ? [`Car insurance: ${money(carInsurance)} a month`] : []),
+  ];
   return {
     mocked: true,
     data: {
       institution: "Capital One",
-      accounts: f.accounts.filter((a) => accountIds.includes(a.id)),
-      monthlyIncome: Math.round(monthlyAvg(f.deposits)),
-      monthlySpending: Math.round(monthlyAvg(f.purchases)),
-      carInsurance: insurance.length ? Math.round(monthlyAvg(insurance)) : null,
+      accounts,
+      monthlyIncome: income,
+      monthlySpending: spending,
+      carInsurance,
       transactionCount: f.deposits.length + f.purchases.length,
+      availableCash,
+      insights,
     },
   };
 }

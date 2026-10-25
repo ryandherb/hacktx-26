@@ -59,8 +59,9 @@ export const CARD_FIELDS: Record<Exclude<CardId, "review" | "bank">, (keyof Situ
 
 const needsDetails = (a: SituationAnswers) => a.life_change.some((c) => c === "new_job" || c === "internship" || c === "moving");
 
-export function cardsFor(a: SituationAnswers): CardId[] {
-  return ["bank", "life_change", ...(needsDetails(a) ? (["life_details"] as const) : []), "keep_horizon", "down_payment", "credit_band", "car_reliance", "review"];
+// With a bank connected, the cash question is answered from the bank, so its card is skipped.
+export function cardsFor(a: SituationAnswers, bankConnected = false): CardId[] {
+  return ["bank", "life_change", ...(needsDetails(a) ? (["life_details"] as const) : []), "keep_horizon", ...(bankConnected ? [] : (["down_payment"] as const)), "credit_band", "car_reliance", "review"];
 }
 
 // Choice questions that show an "Other details" box; typing there can stand in for picking an option.

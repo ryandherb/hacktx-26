@@ -20,7 +20,7 @@ const BANKS = [
   { id: "bayou", name: "Bayou Savings & Loan", sub: "Demo institution", color: "#5b3f8c", available: false },
 ];
 
-const CONNECT_STEPS = ["Establishing secure connection", "Verifying your identity", "Retrieving accounts", "Analyzing 90 days of transactions"];
+const CONNECT_STEPS = ["Establishing secure connection", "Verifying your identity", "Retrieving accounts", "ToyotaAI is analyzing your finances"];
 
 function BankMark({ color, name, size = 44 }: { color: string; name: string; size?: number }) {
   const initials = name.split(" ").filter((w) => /^[A-Z]/.test(w)).slice(0, 2).map((w) => w[0]).join("");
@@ -136,12 +136,12 @@ export default function BankConnectModal({ profileId, firstName, onClose, onConn
                 </span>
               </div>
               <h2 id="bank-title" tabIndex={-1} className="mt-7 text-center text-[24px] font-extrabold leading-tight tracking-tight outline-none">
-                Lifecycle Advisor uses Nessie to connect your bank
+                Let ToyotaAI connect to your finances
               </h2>
               <ul className="mt-7 space-y-5">
                 {[
                   ["Secure", "Your connection is encrypted end to end.", "M12 3l7 3v5c0 4.4-3 8.3-7 9.5C8 19.3 5 15.4 5 11V6l7-3z"],
-                  ["Private", "Read-only access. Your login is never shared with Toyota.", "M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 14.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"],
+                  ["Private", "Read-only access. ToyotaAI never sees your bank login.", "M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 14.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"],
                   ["In your control", "Disconnect any time from your Toyota account.", "M12 4v8m5.7-5.7a8 8 0 11-11.4 0"],
                 ].map(([t, d, path]) => (
                   <li key={t} className="flex gap-3.5">
@@ -152,7 +152,7 @@ export default function BankConnectModal({ profileId, firstName, onClose, onConn
               </ul>
               <div className="mt-auto">
                 <p className="mb-3 text-center text-[11px] leading-snug text-neutral-500">
-                  By selecting &ldquo;Continue&rdquo; you agree to share read-only account data with Lifecycle Advisor.
+                  By selecting &ldquo;Continue&rdquo; you agree to share read-only account data with ToyotaAI.
                 </p>
                 <PrimaryButton onClick={() => setScreen("select")}>Continue</PrimaryButton>
               </div>
@@ -206,7 +206,7 @@ export default function BankConnectModal({ profileId, firstName, onClose, onConn
                 <svg viewBox="0 0 20 20" className="h-5 w-5 text-emerald-600" aria-hidden><circle cx="10" cy="10" r="9" fill="currentColor" /><path d="m6 10.2 2.6 2.6L14.2 7" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </div>
               <p className="mt-4 text-[13px] leading-snug text-neutral-500">
-                Lifecycle Advisor will see balances and 90 days of transactions. It can&rsquo;t move money or make changes.
+                ToyotaAI will see balances and 90 days of transactions. It can&rsquo;t move money or make changes.
               </p>
               <div className="mt-auto">
                 <p className="mb-3 flex items-center justify-center gap-1.5 text-center text-[11px] text-neutral-500"><Lock className="h-3 w-3" /> Demo: no username or password needed</p>
@@ -277,15 +277,15 @@ export default function BankConnectModal({ profileId, firstName, onClose, onConn
                 </span>
                 <h2 id="bank-title" tabIndex={-1} className="mt-7 text-[24px] font-extrabold tracking-tight outline-none">Success!</h2>
                 <p className="mt-2 text-[15px] text-neutral-600">
-                  Your Capital One {snapshot.accounts.length === 1 ? "account is" : "accounts are"} connected.<br />
-                  We imported {snapshot.transactionCount} recent transactions.
+                  ToyotaAI can now see your income, spending, and savings.<br />
+                  {snapshot.transactionCount} recent transactions analyzed.
                 </p>
               </div>
               <PrimaryButton onClick={() => onConnected(snapshot)}>Continue</PrimaryButton>
             </>
           )}
 
-          <p className="mt-3 text-center text-[10px] uppercase tracking-[0.12em] text-neutral-400">Simulated · Capital One Nessie sandbox</p>
+          <p className="mt-3 text-center text-[10px] uppercase tracking-[0.12em] text-neutral-400">Demo data · Capital One sandbox</p>
         </div>
       </div>
     </div>
