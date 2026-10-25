@@ -10,8 +10,8 @@ export default function ShopFinder({ shops }: { shops: DemoShop[] }) {
   const [active, setActive] = useState(0);
 
   return (
-    <div className="grid grid-cols-[190px_1fr] gap-3">
-      <div className="relative h-[196px] overflow-hidden rounded-xl bg-[#eef1ee]" aria-hidden>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(120px,190px)_minmax(0,1fr)]">
+      <div className="relative h-40 overflow-hidden sm:h-[196px] rounded-xl bg-[#eef1ee]" aria-hidden>
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
           <path d="M-5 78 C 20 70, 35 88, 55 74 S 85 60, 105 66" fill="none" stroke="#c9dceb" strokeWidth="7" />
           <path d="M0 20 L100 26 M0 50 L100 46 M30 0 L26 100 M62 0 L70 100" stroke="#fff" strokeWidth="3.2" />

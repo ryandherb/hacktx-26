@@ -89,13 +89,13 @@ export default function EstimateStep({ profile, state, update }: Props) {
     <StepLayout footer={footers[mode]}>
       {mode === "summary" && repair && (
         <>
-          <h2 id="advisor-title" tabIndex={-1} className="text-[30px] font-extrabold leading-tight tracking-tight outline-none">Your repair estimate</h2>
+          <h2 id="advisor-title" tabIndex={-1} className="text-[clamp(24px,2.2vw,30px)] font-extrabold leading-tight tracking-tight outline-none">Your repair estimate</h2>
           <div className="mt-3 rounded-2xl border border-neutral-200 px-5 py-4">
             <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${repair.source === "manual" ? "text-neutral-500" : "text-emerald-700"}`}>
               {repair.source === "manual" ? `From your shop quote${repair.shop ? ` · ${repair.shop}` : ""}` : "We can estimate this"}
             </p>
             <p className="mt-1 text-[17px] font-bold">{repair.label}</p>
-            <p className="mt-1 text-[36px] font-extrabold leading-none tracking-tight">
+            <p className="mt-1 text-[clamp(28px,2.6vw,36px)] font-extrabold leading-none tracking-tight">
               {repair.repair_cost_low === repair.repair_cost_high
                 ? money(repair.repair_cost_estimate)
                 : `${money(repair.repair_cost_low)} – ${money(repair.repair_cost_high)}`}
@@ -118,7 +118,7 @@ export default function EstimateStep({ profile, state, update }: Props) {
               <span className="text-neutral-500">Shops near you: </span>{q.nearby_shops.map((s) => s.name).join(" · ")}
             </p>
           )}
-          <button onClick={() => setMode("upload")} className={`mt-2 text-[14px] underline underline-offset-4 hover:text-[#EB0A1E] ${ring}`}>
+          <button onClick={() => setMode("upload")} className={`mt-2 text-left text-[14px] underline max-md:min-h-11 underline-offset-4 hover:text-[#EB0A1E] ${ring}`}>
             {repair.source === "manual" ? "Change my shop quote" : "Already have a shop quote? Upload it instead"}
           </button>
         </>
@@ -126,7 +126,7 @@ export default function EstimateStep({ profile, state, update }: Props) {
 
       {mode === "inspect" && (
         <>
-          <h2 id="advisor-title" tabIndex={-1} className="text-[30px] font-extrabold leading-tight tracking-tight outline-none">Let&rsquo;s get it diagnosed</h2>
+          <h2 id="advisor-title" tabIndex={-1} className="text-[clamp(24px,2.2vw,30px)] font-extrabold leading-tight tracking-tight outline-none">Let&rsquo;s get it diagnosed</h2>
           <div className="mt-3 flex gap-3.5 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3">
             <svg viewBox="0 0 20 20" className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden><path d="M10 2.5 18 17H2L10 2.5Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M10 8v4M10 14.3v.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
             <div>
@@ -143,7 +143,7 @@ export default function EstimateStep({ profile, state, update }: Props) {
 
       {mode === "upload" && (
         <>
-          <h2 id="advisor-title" tabIndex={-1} className="text-[30px] font-extrabold leading-tight tracking-tight outline-none">Upload your mechanic&rsquo;s quote</h2>
+          <h2 id="advisor-title" tabIndex={-1} className="text-[clamp(24px,2.2vw,30px)] font-extrabold leading-tight tracking-tight outline-none">Upload your mechanic&rsquo;s quote</h2>
           <p className="text-[15px] text-neutral-600">A photo or PDF works. We&rsquo;ll read the line items and total.</p>
 
           <label
@@ -174,7 +174,7 @@ export default function EstimateStep({ profile, state, update }: Props) {
           </label>
           <p role="status" className="mt-1.5 min-h-[18px] text-[13px] text-neutral-600">
             {uploadNote ?? (
-              <a href="/demo/sample-mechanic-quote.pdf" download className={`inline-flex items-center gap-1.5 hover:text-[#EB0A1E] ${ring}`}>
+              <a href="/demo/sample-mechanic-quote.pdf" download className={`inline-flex items-center max-md:min-h-11 gap-1.5 hover:text-[#EB0A1E] ${ring}`}>
                 <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Demo</span>
                 <span className="underline underline-offset-4">Download the sample mechanic&rsquo;s quote</span>
               </a>
@@ -184,7 +184,7 @@ export default function EstimateStep({ profile, state, update }: Props) {
           <div className="mt-2 flex items-center gap-3 text-[12px] font-semibold uppercase tracking-wider text-neutral-400">
             <span className="h-px flex-1 bg-neutral-200" /> or type the total <span className="h-px flex-1 bg-neutral-200" />
           </div>
-          <div className="mt-1 grid grid-cols-[1fr_1.4fr] gap-3">
+          <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.4fr]">
             <MoneyInput label="" value={amount} onChange={(n) => setAmount(n == null ? null : Math.min(n, 100000))} />
             <label className="block">
               <span className="sr-only">Shop name (optional)</span>
@@ -197,7 +197,7 @@ export default function EstimateStep({ profile, state, update }: Props) {
 
       {mode === "review" && readQuote && (
         <>
-          <h2 id="advisor-title" tabIndex={-1} className="text-[30px] font-extrabold leading-tight tracking-tight outline-none">Does this look right?</h2>
+          <h2 id="advisor-title" tabIndex={-1} className="text-[clamp(24px,2.2vw,30px)] font-extrabold leading-tight tracking-tight outline-none">Does this look right?</h2>
           <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-200">
             <div className="flex items-start justify-between gap-4 bg-neutral-50 px-4 py-2.5">
               <div>

@@ -101,23 +101,23 @@ export default function BankConnectModal({ profileId, firstName, onClose, onConn
   };
 
   return (
-    <div className={`fixed inset-0 z-[60] flex items-center justify-center p-4 transition-colors duration-300 ${shown ? "bg-neutral-950/55 backdrop-blur-[3px]" : "bg-transparent"}`}>
+    <div className={`fixed inset-0 z-[60] flex items-center justify-center transition-colors sm:p-4 duration-300 ${shown ? "bg-neutral-950/55 backdrop-blur-[3px]" : "bg-transparent"}`}>
       <div ref={panel} role="dialog" aria-modal="true" aria-labelledby="bank-title"
-        className={`relative flex h-[620px] max-h-[calc(100vh-32px)] w-[400px] max-w-full flex-col overflow-hidden rounded-[22px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)] transition duration-300 ease-out ${shown ? "translate-y-0 scale-100 opacity-100" : "translate-y-3 scale-[0.97] opacity-0"}`}>
+        className={`relative flex h-[100dvh] w-full flex-col overflow-hidden sm:h-[620px] sm:max-h-[calc(100dvh-32px)] sm:w-[400px] sm:max-w-full sm:rounded-[22px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)] transition duration-300 ease-out ${shown ? "translate-y-0 scale-100 opacity-100" : "translate-y-3 scale-[0.97] opacity-0"}`}>
 
         {/* Top bar */}
         <div className="flex h-14 shrink-0 items-center justify-between px-3">
           <button onClick={() => back[screen] && setScreen(back[screen]!)} aria-label="Back"
-            className={`flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100 ${back[screen] ? "" : "invisible"} ${ring}`}>
+            className={`flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100 ${back[screen] ? "" : "invisible"} ${ring}`}>
             <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
           <span className="flex items-center gap-1.5 text-[12px] font-semibold text-neutral-500"><Lock /> Secure connection</span>
-          <button onClick={onClose} aria-label="Close bank connection" className={`flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100 ${ring}`}>
+          <button onClick={onClose} aria-label="Close bank connection" className={`flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100 ${ring}`}>
             <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col px-7 pb-6">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-7 pb-6">
           {screen === "consent" && (
             <>
               <div className="mt-4 flex items-center justify-center gap-3">
@@ -160,7 +160,7 @@ export default function BankConnectModal({ profileId, firstName, onClose, onConn
                 <svg viewBox="0 0 20 20" className="h-4 w-4 text-neutral-500" aria-hidden><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="m13.5 13.5 3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
                 <span className="sr-only">Search banks</span>
                 <input value={query} onChange={(e) => { setQuery(e.target.value); setNote(null); }} placeholder="Search"
-                  className="w-full bg-transparent py-3 text-[15px] outline-none placeholder:text-neutral-500" />
+                  className="w-full bg-transparent py-3 text-base outline-none sm:text-[15px] placeholder:text-neutral-500" />
               </label>
               <ul className="mt-3 min-h-0 flex-1 overflow-y-auto">
                 {banks.map((b) => (
