@@ -22,7 +22,8 @@ export default function ProblemStep({ profile, state, update }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
 
   const text = state.problem;
-  const preset = demoAnswer(profile.id, "repair_description");
+  // A judge-created profile has no preset, so offer the issue they entered when creating it.
+  const preset = demoAnswer(profile.id, "repair_description") ?? profile.open_issue;
 
   const insertDemo = () => {
     if (!preset) return setDemoNote("No demo answer for this profile. Type one instead.");

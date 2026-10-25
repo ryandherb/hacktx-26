@@ -2,8 +2,10 @@
 // loan) come from GET /profiles; this file adds presentation (greeting, trim, image) keyed by
 // the backend profile id. Edit freely: everything here is placeholder demo data.
 import type { Profile } from "@/lib/api";
+import { CUSTOM_PROFILE_ID, loadCustomProfile } from "./customProfile";
 
 // The two profiles shown in the demo. The backend seeds three; the third is unintended.
+// A third, judge-created profile is added from localStorage (see customProfile.ts).
 export const DEMO_PROFILE_IDS = ["maria", "dev"];
 
 export type ProfileDisplay = {
@@ -23,7 +25,7 @@ export const PROFILE_DISPLAY: Record<string, ProfileDisplay> = {
 };
 
 export const displayFor = (p: Profile): ProfileDisplay =>
-  PROFILE_DISPLAY[p.id] ?? {
+  PROFILE_DISPLAY[p.id] ?? (p.id === CUSTOM_PROFILE_ID ? loadCustomProfile()?.display : undefined) ?? {
     firstName: p.name.split(" ")[0],
     trim: "",
     color: "",

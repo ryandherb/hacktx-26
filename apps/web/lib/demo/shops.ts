@@ -37,6 +37,15 @@ export const DEMO_SHOPS: Record<string, DemoShop[]> = {
   ],
 };
 
+// Any other profile (e.g. the judge's own) gets a generic set.
+const GENERIC_SHOPS: DemoShop[] = [
+  { ...TOYOTA_SERVICE, distanceMi: 2.7, x: 70, y: 28 },
+  { name: "Neighborhood Auto Repair", kind: "independent", specialty: "General repair and diagnostics", distanceMi: 1.2, rating: 4.7, reviews: 389, hours: "Open until 6 PM", x: 30, y: 70 },
+  { name: "Precision Car Care", kind: "independent", specialty: "General repair", distanceMi: 2.0, rating: 4.5, reviews: 226, hours: "Open until 5:30 PM", x: 22, y: 38 },
+];
+
+export const shopsFor = (profileId: string) => DEMO_SHOPS[profileId] ?? GENERIC_SHOPS;
+
 // The demo's sample mechanic quote (public/demo/sample-mechanic-quote.{png,pdf}).
 // Uploading exactly this file "reads" it for the demo; any other file asks for the total instead,
 // because the frontend can't actually read documents (that would be a backend OCR/LLM step).

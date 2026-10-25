@@ -18,8 +18,13 @@ import VehicleDrawer from "@/components/dashboard/VehicleDrawer";
 import { backendReachable } from "@/lib/advisor/service";
 import { useAdvisorState } from "@/lib/advisor/state";
 import { getProfiles, type Profile } from "@/lib/api";
+import ProfileDrawer from "@/components/dashboard/ProfileDrawer";
+import { CUSTOM_PROFILE_ID, loadCustomProfile, saveCustomProfile, type CustomProfile } from "@/lib/demo/customProfile";
 import { DEMO_PROFILE_IDS, MOCK_PROFILES, displayFor } from "@/lib/demo/profiles";
 import { clearAssessment, loadSession, saveSession } from "@/lib/demo/session";
+
+// Select value that opens the "Create your own profile" form instead of switching profile.
+const CREATE_OPTION = "__create__";
 
 const ring = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#EB0A1E]";
 
@@ -34,6 +39,9 @@ export default function Dashboard() {
   const [drawer, setDrawer] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // The judge's own profile (localStorage), listed after the demo profiles.
+  const [custom, setCustom] = useState<CustomProfile | null>(null);
+  const [profileForm, setProfileForm] = useState(false);
   const advisor = useAdvisorState();
 
   useEffect(() => {
@@ -45,31 +53,47 @@ export default function Dashboard() {
         .then((p) => { const demo = onlyDemo(p); if (live && demo.length) setProfiles(demo); })
         .catch(() => {});
     }
+    setCustom(loadCustomProfile());
     setProfileId(loadSession().profileId);
     return () => { live = false; };
   }, []);
 
-  const profile = profiles.find((p) => p.id === profileId) ?? profiles[0];
+  const allProfiles = custom ? [...profiles, custom.profile] : profiles;
+  const profile = allProfiles.find((p) => p.id === profileId) ?? profiles[0];
+  const show = (p: Profile) => (p.id === CUSTOM_PROFILE_ID && custom ? custom.display : displayFor(p));
   const closeDrawer = useCallback(() => setDrawer(false), []);
+  const closeProfileForm = useCallback(() => setProfileForm(false), []);
   const closeIssues = useCallback(() => setIssuesOpen(false), []);
   const { update: updateAdvisor } = advisor;
   const openAdvisor = () => updateAdvisor({ view: "open" });
   const minimizeAdvisor = useCallback(() => updateAdvisor({ view: "minimized" }), [updateAdvisor]);
   const closeAdvisor = useCallback(() => updateAdvisor({ view: "closed" }), [updateAdvisor]);
 
-  const choose = (id: string) => {
-    if (id === profile?.id) return;
+  const switchTo = (id: string, message: string) => {
     clearAssessment(); // switching people must never mix answers
     advisor.reset();
     setProfileId(id);
     saveSession({ profileId: id });
-    setNotice("Switched profile. Assessment progress cleared.");
+    setNotice(message);
+  };
+  const choose = (id: string) => {
+    if (id === CREATE_OPTION) return setProfileForm(true);
+    if (id === profile?.id) return;
+    switchTo(id, "Switched profile. Assessment progress cleared.");
+  };
+  const saveCustom = (c: CustomProfile) => {
+    const editing = !!custom;
+    saveCustomProfile(c);
+    setCustom(c);
+    setProfileForm(false);
+    // The car or finances may have changed, so any earlier answers no longer apply.
+    switchTo(c.profile.id, editing ? "Profile updated. Assessment progress cleared." : `Profile created. Welcome, ${c.display.firstName}.`);
   };
   const restart = () => { clearAssessment(); advisor.reset(); setNotice("Scenario restarted."); };
 
   if (!profile) return <main className="p-10 text-neutral-500">Loading…</main>;
 
-  const d = displayFor(profile);
+  const d = show(profile);
   const title = `${profile.vehicle_year} ${profile.vehicle_model}`;
   const label = `${profile.vehicle_year} Toyota ${profile.vehicle_model}`;
   const advisorStep = { intro: 0, problem: 1, estimate: 1, situation: 2, options: 3 }[advisor.state.step];
@@ -107,10 +131,14 @@ export default function Dashboard() {
               <span className="sr-only">Demo profile</span>
               <select value={profile.id} onChange={(e) => choose(e.target.value)}
                 className={`appearance-none rounded-md max-md:min-h-11 border border-neutral-300 bg-white py-2 pl-4 pr-10 text-base md:text-[15px] ${ring}`}>
-                {profiles.map((p) => <option key={p.id} value={p.id}>Demo profile: {displayFor(p).firstName}</option>)}
+                {allProfiles.map((p) => <option key={p.id} value={p.id}>{p.id === CUSTOM_PROFILE_ID ? "Your profile" : "Demo profile"}: {show(p).firstName}</option>)}
+                {!custom && <option value={CREATE_OPTION}>+ Create your own profile</option>}
               </select>
               <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"><Chevron /></span>
             </label>
+            {profile.id === CUSTOM_PROFILE_ID && (
+              <button onClick={() => setProfileForm(true)} className={`whitespace-nowrap rounded-md px-3 max-md:min-h-11 py-2.5 text-sm text-neutral-600 underline-offset-2 hover:underline ${ring}`}>Edit profile</button>
+            )}
             <button onClick={restart} className={`whitespace-nowrap rounded-md px-3 max-md:min-h-11 py-2.5 text-sm text-neutral-600 underline-offset-2 hover:underline ${ring}`}>Restart scenario</button>
           </div>
         </div>
@@ -201,7 +229,9 @@ export default function Dashboard() {
                   {advisor.state.step === "estimate" && <EstimateStep profile={profile} state={advisor.state} update={advisor.update} />}
                   {advisor.state.step === "situation" && <SituationStep profileId={profile.id} state={advisor.state} update={advisor.update} />}
                   {advisor.state.step === "options" && (
-                    <OptionsStep profileId={profile.id} onBack={() => advisor.update({ step: "situation" })}
+                    <OptionsStep profileId={profile.id}
+                      context={{ quote: advisor.state.quote, situation: advisor.state.situation, availableCash: advisor.state.bank?.availableCash ?? null }}
+                      onBack={() => advisor.update({ step: "situation" })}
                       onStartOver={() => { restart(); advisor.update({ view: "open" }); }}
                       onResult={(options, optionsMocked) => advisor.update({ options, optionsMocked })}
                       onView={() => advisor.update({ optionsPage: true })} />
@@ -223,6 +253,7 @@ export default function Dashboard() {
 
       <SiteFooter />
 
+      <ProfileDrawer open={profileForm} onClose={closeProfileForm} existing={custom} onSave={saveCustom} />
       <VehicleDrawer open={drawer} onClose={closeDrawer} profile={profile} display={d} label={label} />
       <IssuesDrawer open={issuesOpen} onClose={closeIssues} label={label} issue={advisor.state.reportedIssue}
         optionsReady={advisor.state.step === "options"} quote={advisor.state.quote} onOpenAdvisor={openAdvisor} />

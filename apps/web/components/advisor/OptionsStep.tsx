@@ -1,27 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getOptions, OPTION_LABELS, type OptionId, type OptionsResult } from "@/lib/advisor/service";
+import { getOptions, OPTION_LABELS, type OptionId, type OptionsContext, type OptionsResult } from "@/lib/advisor/service";
 import { ring } from "./AdvisorPanel";
 import { StepLayout } from "./controls";
 import StepFooter from "./StepFooter";
 
 const STAGES = ["Estimating your repair", "Checking your finances", "Scoring your options", "Writing your explanation"];
 
-type Props = { profileId: string; onBack: () => void; onStartOver: () => void; onResult: (r: OptionsResult, mocked: boolean) => void; onView: () => void };
+type Props = { profileId: string; context: OptionsContext; onBack: () => void; onStartOver: () => void; onResult: (r: OptionsResult, mocked: boolean) => void; onView: () => void };
 
 // Results are re-requested every time this step mounts, so edited answers never show a stale result.
-export default function OptionsStep({ profileId, onBack, onStartOver, onResult, onView }: Props) {
+export default function OptionsStep({ profileId, context, onBack, onStartOver, onResult, onView }: Props) {
   const [result, setResult] = useState<OptionsResult | null>(null);
   const [mocked, setMocked] = useState(false);
   const [stage, setStage] = useState(0);
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
+  const contextRef = useRef(context);
 
   useEffect(() => {
     let live = true;
     const timer = setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 650);
-    getOptions(profileId).then((r) => { if (live) { setResult(r.data); setMocked(r.mocked); onResultRef.current(r.data, r.mocked); } });
+    getOptions(profileId, contextRef.current).then((r) => { if (live) { setResult(r.data); setMocked(r.mocked); onResultRef.current(r.data, r.mocked); } });
     return () => { live = false; clearInterval(timer); };
   }, [profileId]);
 

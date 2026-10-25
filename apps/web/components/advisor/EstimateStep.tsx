@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import type { Profile } from "@/lib/api";
 import type { AdvisorState } from "@/lib/advisor/state";
 import { getQuote } from "@/lib/advisor/service";
-import { DEMO_SHOPS, readDemoQuote, type ReadQuote } from "@/lib/demo/shops";
+import { readDemoQuote, shopsFor, type ReadQuote } from "@/lib/demo/shops";
 import { ring } from "./AdvisorPanel";
 import { MoneyInput, StepLayout } from "./controls";
 import ShopFinder from "./ShopFinder";
@@ -36,7 +36,7 @@ export default function EstimateStep({ profile, state, update }: Props) {
   if (!q) return null;
   const repair = q.repair;
   const v = q.vehicle;
-  const shops = DEMO_SHOPS[profile.id] ?? [];
+  const shops = shopsFor(profile.id);
 
   const applyQuote = async (total: number, shopName: string | null) => {
     if (sending || total <= 0) return;
