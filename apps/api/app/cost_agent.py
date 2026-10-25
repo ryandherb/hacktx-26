@@ -50,7 +50,8 @@ def build_quote(req: CostQuoteRequest, profile: dict | None, as_of_year: int) ->
         repair = estimate_from_manual(req.manual_quote, classification.category, classification.label)
     elif classification.quotable:
         repair = estimate_from_table(
-            classification.category, q.vehicle_model, q.vehicle_year, q.location, as_of_year
+            classification.category, q.vehicle_model, q.vehicle_year, q.location, as_of_year,
+            classification.label,
         )
     else:
         repair = None

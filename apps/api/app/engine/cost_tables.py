@@ -42,6 +42,20 @@ REPAIR_CATEGORIES: dict[str, dict] = {
                      "keywords": ["transmission", "gearbox", "slipping gears", "transmission slipping"]},
 }
 
+# Specific repairs outside the catalog (a bumper, a door handle, a power steering rack). Muse
+# picks a tier from the description; the price still comes from these ranges. The keyword
+# fallback never picks a tier, so without the LLM these go to manual quote input.
+GENERAL_TIERS: dict[str, dict] = {
+    "general_minor": {"label": "Minor repair", "low": 150, "high": 500,
+                      "scope": "under two hours of labor and an inexpensive part (a mirror glass, a door handle, a small dent)"},
+    "general_moderate": {"label": "Moderate repair", "low": 400, "high": 1300,
+                         "scope": "a few hours of labor or a mid-priced part (a bumper cover, a headlight assembly, a control arm)"},
+    "general_major": {"label": "Major repair", "low": 1200, "high": 3500,
+                      "scope": "a day of labor or an expensive part (a door or panel replacement, a steering rack, an A/C evaporator)"},
+    "general_severe": {"label": "Severe repair", "low": 3500, "high": 7000,
+                       "scope": "an engine or hybrid battery replacement, or extensive collision damage"},
+}
+
 # Symptoms describe what the driver notices, not a repair. They span too many possible
 # causes to price, so they always go to a real shop diagnosis and manual quote input.
 SYMPTOMS: dict[str, dict] = {

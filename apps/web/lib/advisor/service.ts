@@ -66,7 +66,7 @@ export async function submitProblem(profileId: string, text: string, vehicle: Ve
 // ---- Step 2: repair quote (issue #2 Cost Agent) ------------------------------------------
 
 export async function getQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): Promise<Served<CostQuoteResult>> {
-  const r = await live((signal) => api.quote({ profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote }, { signal }), 8000);
+  const r = await live((signal) => api.quote({ profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote }, { signal }), 20000); // Muse retries + Render cold starts
   if (r) return { data: r, mocked: false };
   return { mocked: true, data: offlineQuote(profileId, quoteInput, manualQuote) };
 }
@@ -114,7 +114,7 @@ export async function getOptions(profileId: string, inputs: OptionsInputs): Prom
     // the profile's open issue itself.
     const quote = inputs.quote?.complete && !inputs.quoteMocked ? inputs.quote : null;
     return api.analyze(profileId, { quote, pfo_factors: pfo.factors }, { signal });
-  }, 10000);
+  }, 20000); // includes the Explanation Agent call
   if (r) return { data: r, mocked: false };
   return { mocked: true, data: snapshotFor(profileId).analysis };
 }
