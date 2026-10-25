@@ -32,14 +32,8 @@ function BankMark({ color, name, size = 44 }: { color: string; name: string; siz
 }
 
 function ToyotaMark({ size = 56 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 40 40" width={size} height={size} className="rounded-2xl shadow-md" aria-hidden>
-      <rect width="40" height="40" rx="9" fill="#EB0A1E" />
-      <g fill="none" stroke="#fff" strokeWidth="2.2">
-        <ellipse cx="20" cy="20" rx="13.5" ry="9" /><ellipse cx="20" cy="17.2" rx="7.6" ry="3.8" /><ellipse cx="20" cy="21.5" rx="3.1" ry="7.6" />
-      </g>
-    </svg>
-  );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/brand/toyota-emblem.png" alt="" aria-hidden width={size} height={size} className="rounded-2xl shadow-md" />;
 }
 
 function Lock({ className = "h-3.5 w-3.5" }: { className?: string }) {
