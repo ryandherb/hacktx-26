@@ -10,9 +10,12 @@
       {"amount": 4600, "transaction_date": "2026-10-01", "description": "Payroll"}
     ],
     "purchases": [
-      {"amount": 3100, "transaction_date": "2026-08-15", "description": "Monthly spending"},
-      {"amount": 3250, "transaction_date": "2026-09-15", "description": "Monthly spending"},
-      {"amount": 3050, "transaction_date": "2026-10-15", "description": "Monthly spending"}
+      {"amount": 128, "transaction_date": "2026-08-05", "description": "GEICO auto insurance"},
+      {"amount": 2972, "transaction_date": "2026-08-15", "description": "Monthly spending"},
+      {"amount": 128, "transaction_date": "2026-09-05", "description": "GEICO auto insurance"},
+      {"amount": 3122, "transaction_date": "2026-09-15", "description": "Monthly spending"},
+      {"amount": 128, "transaction_date": "2026-10-05", "description": "GEICO auto insurance"},
+      {"amount": 2922, "transaction_date": "2026-10-15", "description": "Monthly spending"}
     ]
   },
   "dev": {
@@ -26,9 +29,12 @@
       {"amount": 2400, "transaction_date": "2026-10-01", "description": "Payroll"}
     ],
     "purchases": [
-      {"amount": 2150, "transaction_date": "2026-08-15", "description": "Monthly spending"},
-      {"amount": 2300, "transaction_date": "2026-09-15", "description": "Monthly spending"},
-      {"amount": 2200, "transaction_date": "2026-10-15", "description": "Monthly spending"}
+      {"amount": 96, "transaction_date": "2026-08-05", "description": "GEICO auto insurance"},
+      {"amount": 2054, "transaction_date": "2026-08-15", "description": "Monthly spending"},
+      {"amount": 96, "transaction_date": "2026-09-05", "description": "GEICO auto insurance"},
+      {"amount": 2204, "transaction_date": "2026-09-15", "description": "Monthly spending"},
+      {"amount": 96, "transaction_date": "2026-10-05", "description": "GEICO auto insurance"},
+      {"amount": 2104, "transaction_date": "2026-10-15", "description": "Monthly spending"}
     ]
   },
   "sam": {
@@ -42,9 +48,12 @@
       {"amount": 3600, "transaction_date": "2026-10-01", "description": "Payroll"}
     ],
     "purchases": [
-      {"amount": 3100, "transaction_date": "2026-08-15", "description": "Monthly spending"},
-      {"amount": 3300, "transaction_date": "2026-09-15", "description": "Monthly spending"},
-      {"amount": 3000, "transaction_date": "2026-10-15", "description": "Monthly spending"}
+      {"amount": 142, "transaction_date": "2026-08-05", "description": "GEICO auto insurance"},
+      {"amount": 2958, "transaction_date": "2026-08-15", "description": "Monthly spending"},
+      {"amount": 142, "transaction_date": "2026-09-05", "description": "GEICO auto insurance"},
+      {"amount": 3158, "transaction_date": "2026-09-15", "description": "Monthly spending"},
+      {"amount": 142, "transaction_date": "2026-10-05", "description": "GEICO auto insurance"},
+      {"amount": 2858, "transaction_date": "2026-10-15", "description": "Monthly spending"}
     ]
   }
 }

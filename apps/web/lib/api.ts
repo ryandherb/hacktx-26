@@ -10,6 +10,7 @@ export type Profile = {
   loan_balance: number;
   monthly_payment: number;
   open_issue: string | null;
+  insurance_premium?: number | null;
 };
 
 export type CurvePoint = { month: number; keep_cost: number; replace_cost: number };
@@ -31,10 +32,34 @@ export type Market = {
   repair_quotes: { shop: string; estimate: number; source: string }[];
 };
 
+export type KRTResult = {
+  keepResult: number;
+  refinanceResult: number;
+  tradeResult: number;
+  repair_ratio: number;
+  pr_runway: number;
+  remaining_life: number;
+}
+
+export type PFOFactors = {
+  apr?: number | null;
+  down_payment?: number | null;
+  income_outlook?: "increasing" | "stable" | "decreasing" | "uncertain";
+  job_stability?: "secure" | "at_risk" | "unknown";
+  upcoming_major_expense?: boolean;
+  other_debt_load?: "none" | "light" | "heavy";
+  windfall_expected?: boolean;
+  payment_risk_tolerance?: "low" | "medium" | "high";
+  household_members?: number | null;
+  car_usage?: "low" | "medium" | "high";
+  credit_confidence?: "low" | "medium" | "high";
+}
+
 export type Analysis = {
   profile_id: string;
   curve: CurvePoint[];
   crossover_month: number | null;
+  result: KRTResult
   recommendation: "keep" | "replace_now" | "replace_later";
   affordability: Affordability;
   market: Market;

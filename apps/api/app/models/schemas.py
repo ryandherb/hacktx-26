@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -21,6 +23,7 @@ class Profile(BaseModel):
     monthly_payment: float = 0.0
     service_history: list[ServiceRecord] = Field(default_factory=list)
     open_issue: str | None = None  # e.g. "transmission slipping"
+    insurance_premium: float | None = None  # monthly; manual/PFO override of Nessie
 
 
 class AffordabilityResult(BaseModel):
@@ -32,10 +35,14 @@ class AffordabilityResult(BaseModel):
     can_afford_payment: bool
     max_comfortable_payment: float
 
+class MaintenanceTask(BaseModel):
+    cost: float
+    interval: int
 
 class MarketData(BaseModel):
     current_vehicle_value_low: float
     current_vehicle_value_high: float
+    scheduled_maintenance: list[MaintenanceTask]
     replacement_options: list[dict]  # name, price, kind (new/cpo/used)
     repair_quotes: list[dict]  # shop, estimate, source
 
@@ -52,12 +59,38 @@ class CurvePoint(BaseModel):
     keep_cost: float
     replace_cost: float
 
+class PFOFactors(BaseModel):
+    apr: float | None = None
+    down_payment: float | None = None
+
+    income_outlook: Literal["increasing", "stable", "decreasing", "uncertain"] = "stable"
+    job_stability: Literal["secure", "at_risk", "unknown"] = "unknown"
+
+    upcoming_major_expense: bool = False
+    other_debt_load: Literal["none", "light", "heavy"] = "none"
+    windfall_expected: bool = False
+
+    payment_risk_tolerance: Literal["low", "medium", "high"] = "medium"
+    household_members: int | None = 1
+
+    car_usage: Literal["low", "medium", "high"] = "medium"
+
+    credit_confidence: Literal["low", "medium", "high"] = "medium"
+
+class KRTResult(BaseModel):
+    keepResult: float
+    refinanceResult: float
+    tradeResult: float
+    repair_ratio: float
+    pr_runway: float
+    remaining_life: float
 
 class AnalysisResult(BaseModel):
     profile_id: str
     curve: list[CurvePoint]
     crossover_month: int | None
-    recommendation: str  # "keep" | "replace_now" | "replace_later"
+    result: KRTResult
+    reccomendation: str # "keep" | "trade" | "refinance"
     affordability: AffordabilityResult
     market: MarketData
     explanation: str
