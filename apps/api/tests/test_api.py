@@ -186,3 +186,29 @@ def test_every_option_gets_a_brief_and_detailed_explanation():
         assert "no loan to refinance" in opts["refinance"]["brief"]
     dev = _demo("dev", DEV_PFO, {"amount": 1450, "shop": "South Austin Auto A/C"})
     assert "quoted at $1,450 by South Austin Auto A/C" in dev["option_explanations"]["keep"]["details"]
+
+
+def _custom_profile(income: float, spending: float, savings: float, loan: float = 0.0, payment: float = 0.0) -> dict:
+    months = ["2026-08", "2026-09", "2026-10"]
+    return {
+        "name": "Judge", "vehicle_model": "Camry", "vehicle_year": 2016, "mileage": 98000, "zip_code": "78702",
+        "loan_balance": loan, "monthly_payment": payment, "open_issue": "brakes grinding",
+        "bank": {
+            "accounts": [{"type": "Checking", "balance": 500}, {"type": "Savings", "balance": savings}],
+            "deposits": [{"amount": income, "transaction_date": f"{m}-01"} for m in months],
+            "purchases": [{"amount": spending, "transaction_date": f"{m}-15"} for m in months],
+        },
+    }
+
+
+def test_custom_profile_with_zero_spending_does_not_crash():
+    r = client.post("/analyze", json={"profile_id": "custom", "custom_profile": _custom_profile(0, 0, 0)})
+    assert r.status_code == 200
+    assert "not financial advice" in r.json()["explanation"]
+
+
+def test_custom_profile_without_loan_has_no_refinance():
+    body = client.post("/analyze", json={"profile_id": "custom", "custom_profile": _custom_profile(2500, 2450, 200),
+                                         "pfo_factors": {"income_outlook": "uncertain", "job_stability": "at_risk"}}).json()
+    assert body["recommendation"] != "refinance"
+    assert body["option_notes"]["refinance"]["available"] is False

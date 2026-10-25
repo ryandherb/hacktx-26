@@ -61,7 +61,7 @@ def test_cheapest_cost_is_a_pro_others_are_cons():
 
 
 def test_refinance_unavailable_without_a_loan():
-    n = option_notes.build(ctx(205.0, 205.0, 372.0))["refinance"]
+    n = option_notes.build(ctx(205.0, 205.0, 372.0, refi_payment=0.0))["refinance"]
     assert n.available is False and n.pros == []
     assert n.cons == ["You don't have a car loan to refinance"]
 
@@ -83,3 +83,10 @@ def test_trade_over_budget_and_extras():
 
 def test_missing_krt_gives_no_notes():
     assert option_notes.build({"recommendation": "keep"}) == {}
+
+
+def test_no_loan_even_when_risk_margin_moves_refinance_cost():
+    # PFO risk margin makes refinanceResult differ from keepResult with no loan; refi_payment is 0.
+    n = option_notes.build(ctx(128.0, 145.0, 633.0, refi_payment=0.0))["refinance"]
+    assert n.available is False
+    assert not any("$0" in t for t in n.pros + n.cons)

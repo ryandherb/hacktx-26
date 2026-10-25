@@ -15,6 +15,7 @@ PRICE_TIER_SCALER = 15000
 DEFAULT_APR = 0.07
 DEFAULT_DOWN_PCT = 0.2
 LOAN_TERM_MONTHS = 60
+NO_SPEND_RUNWAY_MONTHS = 24.0  # pr_runway when there's no monthly spending to divide by
 
 # translate credit confidence into a rough estimate apr
 CREDIT_CONFIDENCE_APR = {
@@ -67,7 +68,12 @@ def score(
     # derived Inputs
     repair_ratio = repair_cost / car_value
     equity = car_value - profile.loan_balance
-    pr_runway = (afford.savings_balance - repair_cost) / afford.monthly_spend
+    if afford.monthly_spend > 0:
+        pr_runway = (afford.savings_balance - repair_cost) / afford.monthly_spend
+    else:
+        # No spending recorded (e.g. a typed-in profile with $0): runway can't be measured, so
+        # keep the sign (negative = savings don't cover the repair) and cap it at two years.
+        pr_runway = -1.0 if afford.savings_balance < repair_cost else NO_SPEND_RUNWAY_MONTHS
     remaining_life = max(0, 1 - (profile.mileage / L_EXPECTED))
     lifetime_average = profile.mileage / (12 * (date.today().year - profile.vehicle_year) + 6)
 
