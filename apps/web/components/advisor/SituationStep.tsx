@@ -7,6 +7,7 @@ import {
   OTHER_DETAILS_CARDS, cardComplete, cardsFor, type CardId, type LifeChange, type SituationAnswers,
 } from "@/lib/advisor/situation";
 import { DEMO_SITUATION } from "@/lib/demo/answers";
+import { PROFILE_DISPLAY } from "@/lib/demo/profiles";
 import { ring } from "./AdvisorPanel";
 import { DemoInsert, MoneyInput, Segmented, StepLayout, TogglePill } from "./controls";
 import StepFooter from "./StepFooter";
@@ -29,6 +30,7 @@ const TITLES: Record<CardId, [string, string]> = {
 export default function SituationStep({ profileId, state, update }: Props) {
   const a = state.situation;
   const cards = cardsFor(a, !!state.bank);
+  const credit = PROFILE_DISPLAY[profileId]?.creditOnFile ?? "Unknown";
   const index = Math.min(state.situationCard, cards.length - 1);
   const card = cards[index];
   const set = (patch: Partial<SituationAnswers>) => update({ situation: { ...a, ...patch } });
@@ -123,8 +125,8 @@ export default function SituationStep({ profileId, state, update }: Props) {
           </div>
         )}
 
-        {card === "bank" && <BankCard state={state} update={update} cash={a.down_payment} setCash={(v) => set({ down_payment: v })} />}
-        {card === "review" && <Review a={a} cards={cards} go={go} bank={state.bank} />}
+        {card === "bank" && <BankCard state={state} update={update} credit={credit} cash={a.down_payment} setCash={(v) => set({ down_payment: v })} />}
+        {card === "review" && <Review a={a} cards={cards} go={go} bank={state.bank} credit={credit} />}
 
         {OTHER_DETAILS_CARDS.includes(card) && (
           <label className="mt-4 block">
@@ -141,7 +143,7 @@ export default function SituationStep({ profileId, state, update }: Props) {
   );
 }
 
-function Review({ a, cards, go, bank }: { a: SituationAnswers; cards: CardId[]; go: (i: number) => void; bank: BankSnapshot | null }) {
+function Review({ a, cards, go, bank, credit }: { a: SituationAnswers; cards: CardId[]; go: (i: number) => void; bank: BankSnapshot | null; credit: string }) {
   const changes = a.life_change.map((c) => LIFE_CHANGES.find((x) => x.id === c)?.label).join(", ");
   const details = [
     a.life_change.includes("new_job") && `New job starts ${a.job_start}, ${money(a.expected_take_home ?? 0)}/mo take-home`,
@@ -156,7 +158,7 @@ function Review({ a, cards, go, bank }: { a: SituationAnswers; cards: CardId[]; 
     ...(cards.includes("life_details") ? [["life_details", "Details", details] as [CardId, string, string]] : []),
     ["keep_horizon", "Keep the car", a.keep_horizon ?? ""],
     ["down_payment", "Cash available", `${money(a.down_payment ?? 0)}${bank ? " · from your bank" : ""}`],
-    ["credit_band", "Credit estimate", a.credit_band ?? ""],
+    ["credit_band", "Credit estimate", `${credit} · on file`],
     ["car_reliance", "Reliance on car", a.car_reliance ?? ""],
   ] as [CardId, string, string][]).map(([id, k, v]) => [id, k, withNote(id, v)]);
   return (
@@ -165,7 +167,7 @@ function Review({ a, cards, go, bank }: { a: SituationAnswers; cards: CardId[]; 
         <div key={id} className="flex items-center gap-6 py-1.5 text-[15px]">
           <dt className="w-36 shrink-0 text-neutral-600">{k}</dt>
           <dd className="flex-1 font-bold">{v}</dd>
-          <button onClick={() => go(Math.max(cards.indexOf(id), 0))} className={`text-sm underline underline-offset-2 hover:text-[#EB0A1E] ${ring}`}>Edit</button>
+          {id === "credit_band" ? <span className="w-[26px]" /> : <button onClick={() => go(Math.max(cards.indexOf(id), 0))} className={`text-sm underline underline-offset-2 hover:text-[#EB0A1E] ${ring}`}>Edit</button>}
         </div>
       ))}
     </dl>
@@ -173,9 +175,9 @@ function Review({ a, cards, go, bank }: { a: SituationAnswers; cards: CardId[]; 
 }
 
 // First card of step 2: the bank snapshot (mock Nessie), or a prompt to connect.
-type BankCardProps = { state: AdvisorState; update: (p: Partial<AdvisorState>) => void; cash: number | null; setCash: (v: number | null) => void };
+type BankCardProps = { state: AdvisorState; update: (p: Partial<AdvisorState>) => void; credit: string; cash: number | null; setCash: (v: number | null) => void };
 
-function BankCard({ state, update, cash, setCash }: BankCardProps) {
+function BankCard({ state, update, credit, cash, setCash }: BankCardProps) {
   const b = state.bank;
   if (!b) {
     return (
@@ -198,10 +200,11 @@ function BankCard({ state, update, cash, setCash }: BankCardProps) {
   const savings = b.accounts.filter((x) => x.type === "Savings").reduce((s, x) => s + x.balance, 0);
   const checking = b.accounts.filter((x) => x.type === "Checking").reduce((s, x) => s + x.balance, 0);
   const tiles: [string, string][] = [
-    ["Monthly income", `${money(b.monthlyIncome)}`],
-    ["Monthly spending", `${money(b.monthlySpending)}`],
+    ["Income / mo", `${money(b.monthlyIncome)}`],
+    ["Spending / mo", `${money(b.monthlySpending)}`],
     ["Savings", money(savings)],
     ["Checking", money(checking)],
+    ["Credit on file", credit],
   ];
   return (
     <div>
@@ -212,7 +215,7 @@ function BankCard({ state, update, cash, setCash }: BankCardProps) {
         </span>
         <button onClick={() => update({ bankModal: true })} className={`text-emerald-800/80 underline underline-offset-2 ${ring}`}>Reconnect</button>
       </div>
-      <dl className="mt-3 grid grid-cols-4 gap-2.5">
+      <dl className="mt-3 grid grid-cols-5 gap-2">
         {tiles.map(([k, v]) => (
           <div key={k} className="rounded-xl border border-neutral-200 px-3 py-2.5">
             <dt className="text-[12px] text-neutral-600">{k}</dt>
