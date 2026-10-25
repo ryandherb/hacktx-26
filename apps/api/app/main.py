@@ -16,9 +16,11 @@ from issue_2_cost_agent.app.cost_routes import router as cost_router  # noqa: E4
 
 app = FastAPI(title="Next Move API")
 
+settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[get_settings().web_origin],
+    allow_origins=settings.web_origins,
+    allow_origin_regex=settings.web_origin_regex or None,
     allow_methods=["*"],
     allow_headers=["*"],
 )
