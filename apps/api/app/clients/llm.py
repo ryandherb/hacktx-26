@@ -29,6 +29,9 @@ DISCLAIMER = (
     "Prices and recommendations are estimates built on synthetic data, not financial advice."
 )
 SHORT_DISCLAIMER = "Estimates, not financial advice."
+# /analyze waits at most this long for the written explanation, then uses the template, so the
+# results page never stalls on the LLM (the frontend gives /analyze 20s in total).
+EXPLAIN_TIMEOUT_SECONDS = 10.0
 
 # Default base URLs per provider. Anything else needs LLM_BASE_URL.
 DEFAULT_BASE_URLS = {
@@ -144,6 +147,7 @@ def _complete(
     system: str | None = None,
     temperature: float = 0.2,
     max_tokens: int | None = None,
+    timeout: float | None = None,
 ) -> str:
     """Send one chat completion request and return the reply text. Raises LLMError."""
     s = get_settings()
@@ -176,7 +180,7 @@ def _complete(
                 "Content-Type": "application/json",
             },
             json=body,
-            timeout=s.llm_timeout_seconds,
+            timeout=timeout or s.llm_timeout_seconds,
         )
         r.raise_for_status()
         return _content_from_response(r.json())
@@ -554,6 +558,7 @@ def explain(context: dict) -> Explanation:
             "Explain this result. Facts (JSON):\n" + json.dumps(facts, default=str),
             system=EXPLAIN_SYSTEM_PROMPT,
             max_tokens=max(get_settings().llm_max_tokens, 1500),
+            timeout=EXPLAIN_TIMEOUT_SECONDS,
         )
         data = _reply_object(reply)
     except (LLMError, ValueError) as e:

@@ -255,6 +255,7 @@ def test_explain_uses_llm_reply(monkeypatch, rec):
     assert e.summary == f"{LLM_REPLIES[rec]['summary']} {llm.SHORT_DISCLAIMER}"
     assert e.details == f"{LLM_REPLIES[rec]['details']} {llm.DISCLAIMER}"
     assert len(calls) == 1  # one request for both versions
+    assert calls[0]["timeout"] == llm.EXPLAIN_TIMEOUT_SECONDS  # capped so /analyze stays fast
     call = calls[0]
     assert call["url"] == "https://api.meta.ai/v1/chat/completions"
     assert call["headers"]["Authorization"] == "Bearer test-key"
