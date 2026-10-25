@@ -34,8 +34,15 @@ def test_analyze_returns_notes_for_every_option(pid):
     assert set(notes) == {"keep", "trade", "refinance"}
     for n in notes.values():
         assert len(n["pros"]) <= 3 and len(n["cons"]) <= 3
-    rec = body["recommendation"]
-    assert notes[rec]["pros"][0].startswith("Lowest monthly cost")
+    # The cheapest option says so. (It isn't always the recommendation: the 50% rule can
+    # recommend trading in even when keeping is cheaper month to month.)
+    k = body["result"]
+    costs = {"keep": k["keepResult"], "trade": k["tradeResult"]}
+    if k["refinanceResult"] != k["keepResult"]:
+        costs["refinance"] = k["refinanceResult"]
+    cheapest = min(costs, key=costs.get)
+    assert notes[cheapest]["pros"][0].startswith("Lowest monthly cost")
+    assert sum(p.startswith("Lowest monthly cost") for n in notes.values() for p in n["pros"]) == 1
 
 
 def test_only_given_numbers():

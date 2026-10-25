@@ -77,64 +77,107 @@
     },
     "analysis": {
       "profile_id": "maria",
-      "recommendation": "keep",
+      "recommendation": "trade",
       "result": {
         "keepResult": 225.87,
         "refinanceResult": 225.87,
-        "tradeResult": 377.33,
+        "tradeResult": 487.43,
         "repair_ratio": 1.3026315789473684,
         "pr_runway": 1.5478739870999862,
         "remaining_life": 0.26,
-        "new_payment": 185.28,
+        "new_payment": 280.79,
         "refi_payment": 0.0,
         "suggested_models": [
           {
-            "name": "2021 Corolla LE (CPO)",
-            "price": 19500.0,
-            "kind": "cpo",
+            "name": "2026 Corolla LE",
+            "price": 24500.0,
+            "kind": "new",
             "seats": 5,
             "mpg": 35.0,
             "body": "sedan",
             "down_payment": 6000.0,
-            "new_payment": 185.28,
-            "insurance_delta": 45.79,
-            "fuel_delta": -20.4,
-            "monthly_cost": 377.33,
-            "reason": "lowest monthly cost of the cars that fit; saves ~$20/mo on gas; certified pre-owned with Toyota warranty"
-          },
-          {
-            "name": "2021 Camry LE (CPO)",
-            "price": 24500.0,
-            "kind": "cpo",
-            "seats": 5,
-            "mpg": 32.0,
-            "body": "sedan",
-            "down_payment": 6000.0,
             "new_payment": 280.79,
             "insurance_delta": 60.38,
-            "fuel_delta": -11.52,
-            "monthly_cost": 496.32,
-            "reason": "certified pre-owned with Toyota warranty"
+            "fuel_delta": -20.4,
+            "monthly_cost": 487.43,
+            "reason": "lowest monthly cost of the cars that fit; saves ~$20/mo on gas"
           },
           {
-            "name": "2022 Camry Hybrid LE (CPO)",
-            "price": 26900.0,
-            "kind": "cpo",
+            "name": "2026 Corolla Cross L",
+            "price": 25335.0,
+            "kind": "new",
+            "seats": 5,
+            "mpg": 32.0,
+            "body": "suv",
+            "down_payment": 6000.0,
+            "new_payment": 296.74,
+            "insurance_delta": 62.81,
+            "fuel_delta": -11.52,
+            "monthly_cost": 514.7,
+            "reason": "$297/mo payment"
+          },
+          {
+            "name": "2026 Camry Hybrid LE",
+            "price": 29000.0,
+            "kind": "new",
             "seats": 5,
             "mpg": 51.0,
             "body": "sedan",
             "down_payment": 6000.0,
-            "new_payment": 326.63,
-            "insurance_delta": 67.38,
+            "new_payment": 366.74,
+            "insurance_delta": 73.5,
             "fuel_delta": -50.14,
-            "monthly_cost": 510.54,
-            "reason": "saves ~$50/mo on gas; certified pre-owned with Toyota warranty"
+            "monthly_cost": 556.77,
+            "reason": "saves ~$50/mo on gas"
           }
         ],
         "trade_affordable": true
       },
-      "new_monthly_payment": 185.28,
-      "suggested_models": null,
+      "new_monthly_payment": 280.79,
+      "suggested_models": [
+        {
+          "name": "2026 Corolla LE",
+          "price": 24500.0,
+          "kind": "new",
+          "seats": 5,
+          "mpg": 35.0,
+          "body": "sedan",
+          "down_payment": 6000.0,
+          "new_payment": 280.79,
+          "insurance_delta": 60.38,
+          "fuel_delta": -20.4,
+          "monthly_cost": 487.43,
+          "reason": "lowest monthly cost of the cars that fit; saves ~$20/mo on gas"
+        },
+        {
+          "name": "2026 Corolla Cross L",
+          "price": 25335.0,
+          "kind": "new",
+          "seats": 5,
+          "mpg": 32.0,
+          "body": "suv",
+          "down_payment": 6000.0,
+          "new_payment": 296.74,
+          "insurance_delta": 62.81,
+          "fuel_delta": -11.52,
+          "monthly_cost": 514.7,
+          "reason": "$297/mo payment"
+        },
+        {
+          "name": "2026 Camry Hybrid LE",
+          "price": 29000.0,
+          "kind": "new",
+          "seats": 5,
+          "mpg": 51.0,
+          "body": "sedan",
+          "down_payment": 6000.0,
+          "new_payment": 366.74,
+          "insurance_delta": 73.5,
+          "fuel_delta": -50.14,
+          "monthly_cost": 556.77,
+          "reason": "saves ~$50/mo on gas"
+        }
+      ],
       "apr": 0.055,
       "down_payment": 6000.0,
       "affordability": {
@@ -173,29 +216,29 @@
         ],
         "replacement_options": [
           {
-            "name": "2021 Camry LE (CPO)",
+            "name": "2026 Corolla LE",
             "price": 24500,
-            "kind": "cpo"
-          },
-          {
-            "name": "2025 Camry LE",
-            "price": 29800,
             "kind": "new"
           },
           {
-            "name": "2022 Camry Hybrid LE (CPO)",
-            "price": 26900,
-            "kind": "cpo"
+            "name": "2026 Corolla Cross L",
+            "price": 25335,
+            "kind": "new"
           },
           {
-            "name": "2021 Corolla LE (CPO)",
-            "price": 19500,
-            "kind": "cpo"
+            "name": "2026 Camry Hybrid LE",
+            "price": 29000,
+            "kind": "new"
           },
           {
-            "name": "2022 RAV4 Hybrid XLE (CPO)",
-            "price": 31500,
-            "kind": "cpo"
+            "name": "2026 RAV4 Hybrid LE",
+            "price": 31900,
+            "kind": "new"
+          },
+          {
+            "name": "2026 Sienna LE",
+            "price": 40120,
+            "kind": "new"
           }
         ],
         "repair_quotes": [
@@ -211,8 +254,36 @@
           }
         ]
       },
-      "explanation": "Repairing your 2012 Camry is your best move: about $226 a month, compared with $377 to trade in. The repair costs about 130% of what your car is worth, but keeping it is still cheaper each month than trading in. Estimates, not financial advice.",
-      "explanation_details": "Repairing and keeping your current car looks like the best move. Estimated monthly cost: keeping $226, trading $377. The repair is estimated at about $4,950. That's about 130% of what the car is worth, and after paying for it your savings would cover about 1.5 months of spending. The car has about 26% of its expected life left. If you'd rather trade in, the best fit is 2021 Corolla LE (CPO) at $19,500: about $185 a month loan payment with $6,000 down (lowest monthly cost of the cars that fit; saves ~$20/mo on gas; certified pre-owned with Toyota warranty). With that car, insurance would go up about $46 a month and you'd save about $20 a month on gas. You have about $1,467 left over each month, and a payment up to $1,167 looks comfortable. Prices and recommendations are estimates built on synthetic data, not financial advice.",
+      "explanation": "The repair would cost about 130% of what your 2012 Camry is worth, so trading in is your best move. A 2026 Corolla LE would run about $487 a month, and it fits your budget. Estimates, not financial advice.",
+      "explanation_details": "Trading in now looks like the best move, and a replacement fits your budget. Estimated monthly cost: keeping $226, trading $487. The repair is estimated at $2,750 to $4,950. That's about 130% of what the car is worth, and after paying for it your savings would cover about 1.5 months of spending. The car has about 26% of its expected life left. Top picks for you: 2026 Corolla LE at $24,500: about $281 a month loan payment with $6,000 down (lowest monthly cost of the cars that fit; saves ~$20/mo on gas); 2026 Corolla Cross L at $25,335: about $297 a month loan payment with $6,000 down ($297/mo payment); 2026 Camry Hybrid LE at $29,000: about $367 a month loan payment with $6,000 down (saves ~$50/mo on gas). With that car, insurance would go up about $60 a month and you'd save about $20 a month on gas. You have about $1,467 left over each month, and a payment up to $1,167 looks comfortable. Prices and recommendations are estimates built on synthetic data, not financial advice.",
+      "option_explanations": {
+        "keep": {
+          "brief": "Cheaper each month, but the repair costs about 130% of what your 2012 Camry is worth, and it has about 26% of its life left.",
+          "details": "Repairing and keeping your 2012 Camry costs about $226 a month, counting the repair spread over three years and expected upkeep. The repair is estimated at $2,750 to $4,950, about 130% of what the car is worth. After paying for it, your savings would cover about 1.5 months of spending. The car has about 26% of its expected life left, so more big repairs are likely before long."
+        },
+        "trade": {
+          "brief": "The repair costs more than what your 2012 Camry is worth, and a new Toyota fits your budget.",
+          "details": "The best fit is a new 2026 Corolla LE at $24,500. With $6,000 down and your 2012 Camry traded in, the loan payment would be about $281 a month. Compared with your current car, insurance would go up about $60 a month and you'd save about $20 a month on gas. All in, that's about $487 a month. The loan payment is under your comfortable payment of $1,167 a month. Other good fits: 2026 Corolla Cross L (about $515 a month) and 2026 Camry Hybrid LE (about $557 a month)."
+        },
+        "refinance": {
+          "brief": "Your 2012 Camry is paid off, so there's no loan to refinance.",
+          "details": "Refinancing replaces a car loan you already have with a cheaper one. Your 2012 Camry has no loan balance, so your real choices are repairing it or trading it in."
+        }
+      },
+      "repair": {
+        "source": "table",
+        "category": "transmission",
+        "label": "Transmission rebuild or replacement",
+        "repair_cost_low": 2750.0,
+        "repair_cost_high": 4950.0,
+        "repair_cost_estimate": 4950.0,
+        "model_multiplier": 1.0,
+        "age_multiplier": 1.1,
+        "region_multiplier": 1.0,
+        "region": "TX",
+        "shop": null
+      },
+      "car_value": 3800.0,
       "option_notes": {
         "keep": {
           "available": true,
@@ -228,14 +299,14 @@
         "trade": {
           "available": true,
           "pros": [
-            "Newer car: 2021 Corolla LE (CPO)",
+            "Newer car: 2026 Corolla LE",
             "Skip the $4,950 repair",
             "Saves about $20/mo on gas"
           ],
           "cons": [
-            "Costs about $377/mo all-in",
+            "Costs about $487/mo all-in",
             "$6,000 down payment",
-            "Insurance goes up about $46/mo"
+            "Insurance goes up about $60/mo"
           ]
         },
         "refinance": {
@@ -326,59 +397,59 @@
       "result": {
         "keepResult": 128.35,
         "refinanceResult": 145.68,
-        "tradeResult": 449.05,
+        "tradeResult": 687.06,
         "repair_ratio": 0.6444444444444445,
         "pr_runway": -0.24811992763920654,
         "remaining_life": 0.14500000000000002,
-        "new_payment": 307.66,
+        "new_payment": 472.9,
         "refi_payment": 0.0,
         "suggested_models": [
           {
-            "name": "2019 Corolla LE (used)",
-            "price": 16900.0,
-            "kind": "used",
+            "name": "2026 Corolla LE",
+            "price": 24500.0,
+            "kind": "new",
             "seats": 5,
             "mpg": 35.0,
             "body": "sedan",
             "down_payment": 500.0,
-            "new_payment": 307.66,
-            "insurance_delta": 42.73,
+            "new_payment": 472.9,
+            "insurance_delta": 64.9,
             "fuel_delta": -10.69,
-            "monthly_cost": 449.05,
+            "monthly_cost": 687.06,
             "reason": "lowest monthly cost, but over your comfortable payment"
           },
           {
-            "name": "2020 Prius L Eco (used)",
-            "price": 18400.0,
-            "kind": "used",
+            "name": "2026 Corolla Cross L",
+            "price": 25335.0,
+            "kind": "new",
             "seats": 5,
-            "mpg": 54.0,
-            "body": "hatchback",
+            "mpg": 32.0,
+            "body": "suv",
             "down_payment": 500.0,
-            "new_payment": 340.27,
-            "insurance_delta": 47.1,
-            "fuel_delta": -44.55,
-            "monthly_cost": 453.02,
-            "reason": "saves ~$45/mo on gas"
+            "new_payment": 491.05,
+            "insurance_delta": 67.33,
+            "fuel_delta": -1.67,
+            "monthly_cost": 724.66,
+            "reason": "$491/mo payment"
           },
           {
-            "name": "2020 Corolla Hybrid LE (used)",
-            "price": 18900.0,
-            "kind": "used",
+            "name": "2026 Camry Hybrid LE",
+            "price": 29000.0,
+            "kind": "new",
             "seats": 5,
-            "mpg": 50.0,
+            "mpg": 51.0,
             "body": "sedan",
             "down_payment": 500.0,
-            "new_payment": 351.14,
-            "insurance_delta": 48.56,
-            "fuel_delta": -39.56,
-            "monthly_cost": 475.01,
-            "reason": "saves ~$40/mo on gas"
+            "new_payment": 570.74,
+            "insurance_delta": 78.02,
+            "fuel_delta": -40.88,
+            "monthly_cost": 789.64,
+            "reason": "saves ~$41/mo on gas"
           }
         ],
         "trade_affordable": false
       },
-      "new_monthly_payment": 307.66,
+      "new_monthly_payment": 472.9,
       "suggested_models": null,
       "apr": 0.11,
       "down_payment": 500.0,
@@ -418,24 +489,29 @@
         ],
         "replacement_options": [
           {
-            "name": "2019 Corolla LE (used)",
-            "price": 16900,
-            "kind": "used"
-          },
-          {
-            "name": "2025 Corolla LE",
-            "price": 23000,
+            "name": "2026 Corolla LE",
+            "price": 24500,
             "kind": "new"
           },
           {
-            "name": "2020 Prius L Eco (used)",
-            "price": 18400,
-            "kind": "used"
+            "name": "2026 Corolla Cross L",
+            "price": 25335,
+            "kind": "new"
           },
           {
-            "name": "2020 Corolla Hybrid LE (used)",
-            "price": 18900,
-            "kind": "used"
+            "name": "2026 Camry Hybrid LE",
+            "price": 29000,
+            "kind": "new"
+          },
+          {
+            "name": "2026 RAV4 Hybrid LE",
+            "price": 31900,
+            "kind": "new"
+          },
+          {
+            "name": "2026 Sienna LE",
+            "price": 40120,
+            "kind": "new"
           }
         ],
         "repair_quotes": [
@@ -451,8 +527,36 @@
           }
         ]
       },
-      "explanation": "Repairing your 2010 Corolla is your best move: about $128 a month, compared with $449 to trade in. A new car payment doesn't fit your budget right now. Estimates, not financial advice.",
-      "explanation_details": "Repairing and keeping your current car looks like the best move. Estimated monthly cost: keeping $128, trading $449, refinancing $146. The repair is estimated at about $1,450. That's about 64% of what the car is worth, and it costs more than your current savings. The car has about 15% of its expected life left. If you'd rather trade in, the best fit is 2019 Corolla LE (used) at $16,900: about $308 a month loan payment with $500 down (lowest monthly cost, but over your comfortable payment). With that car, insurance would go up about $43 a month and you'd save about $11 a month on gas. You have about $50 left over each month, so there's no room for a new car payment right now. Prices and recommendations are estimates built on synthetic data, not financial advice.",
+      "explanation": "Repairing your 2010 Corolla is your best move: about $128 a month, compared with $687 to trade in. A new car payment doesn't fit your budget right now. Estimates, not financial advice.",
+      "explanation_details": "Repairing and keeping your current car looks like the best move. Estimated monthly cost: keeping $128, trading $687. The repair is quoted at $1,450. That's about 64% of what the car is worth, and it costs more than your current savings. The car has about 15% of its expected life left. If you'd rather trade in, the best fit is 2026 Corolla LE at $24,500: about $473 a month loan payment with $500 down (lowest monthly cost, but over your comfortable payment). With that car, insurance would go up about $65 a month and you'd save about $11 a month on gas. You have about $50 left over each month, so there's no room for a new car payment right now. Prices and recommendations are estimates built on synthetic data, not financial advice.",
+      "option_explanations": {
+        "keep": {
+          "brief": "A contained repair keeps you on the road without a new car payment.",
+          "details": "Repairing and keeping your 2010 Corolla costs about $128 a month, counting the repair spread over three years and expected upkeep. The repair is quoted at $1,450 by South Austin Auto A/C, about 64% of what the car is worth. It costs more than your current savings. The car has about 15% of its expected life left."
+        },
+        "trade": {
+          "brief": "A new car payment doesn't fit your budget right now.",
+          "details": "The best fit is a new 2026 Corolla LE at $24,500. With $500 down and your 2010 Corolla traded in, the loan payment would be about $473 a month. Compared with your current car, insurance would go up about $65 a month and you'd save about $11 a month on gas. All in, that's about $687 a month. You have about $50 left over each month, so there's no room for a car payment right now. Other good fits: 2026 Corolla Cross L (about $725 a month) and 2026 Camry Hybrid LE (about $790 a month)."
+        },
+        "refinance": {
+          "brief": "Your 2010 Corolla is paid off, so there's no loan to refinance.",
+          "details": "Refinancing replaces a car loan you already have with a cheaper one. Your 2010 Corolla has no loan balance, so your real choices are repairing it or trading it in."
+        }
+      },
+      "repair": {
+        "source": "manual",
+        "category": "noise",
+        "label": "Unusual noise",
+        "repair_cost_low": 1450.0,
+        "repair_cost_high": 1450.0,
+        "repair_cost_estimate": 1450.0,
+        "model_multiplier": null,
+        "age_multiplier": null,
+        "region_multiplier": null,
+        "region": null,
+        "shop": "South Austin Auto A/C"
+      },
+      "car_value": 2250.0,
       "option_notes": {
         "keep": {
           "available": true,
@@ -469,12 +573,12 @@
         "trade": {
           "available": true,
           "pros": [
-            "Newer car: 2019 Corolla LE (used)",
+            "Newer car: 2026 Corolla LE",
             "Skip the $1,450 repair",
             "Saves about $11/mo on gas"
           ],
           "cons": [
-            "Costs about $449/mo all-in",
+            "Costs about $687/mo all-in",
             "$500 down payment",
             "Over your comfortable monthly payment"
           ]
