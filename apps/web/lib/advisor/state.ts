@@ -36,9 +36,10 @@ export type AdvisorState = {
   options: Analysis | null;
   optionsMocked: boolean;
   optionsPage: boolean;
+  planPage: boolean; // the plan for the recommended option, one slide past the options page
 };
 
-const INITIAL: AdvisorState = { view: "closed", step: "intro", problem: "", survey: null, surveyMocked: false, estimateFileName: null, situation: EMPTY_SITUATION, situationCard: 0, reportedIssue: null, quote: null, quoteMocked: false, manualQuote: null, bank: null, bankSkipped: false, bankModal: false, options: null, optionsMocked: false, optionsPage: false };
+const INITIAL: AdvisorState = { view: "closed", step: "intro", problem: "", survey: null, surveyMocked: false, estimateFileName: null, situation: EMPTY_SITUATION, situationCard: 0, reportedIssue: null, quote: null, quoteMocked: false, manualQuote: null, bank: null, bankSkipped: false, bankModal: false, options: null, optionsMocked: false, optionsPage: false, planPage: false };
 
 export function useAdvisorState() {
   const [state, setState] = useState<AdvisorState>(INITIAL);
@@ -51,7 +52,7 @@ export function useAdvisorState() {
         const step = saved.step && ["problem", "estimate", "situation", "options"].includes(saved.step) ? saved.step : "intro";
         // Results saved by an older build have a different shape; drop them so they're re-requested.
         const options = saved.options && "result" in saved.options ? saved.options : null;
-        setState({ ...INITIAL, ...saved, step, options, optionsPage: !!options && !!saved.optionsPage, situation: { ...EMPTY_SITUATION, ...saved.situation } });
+        setState({ ...INITIAL, ...saved, step, options, optionsPage: !!options && !!saved.optionsPage, planPage: !!options && !!saved.planPage, situation: { ...EMPTY_SITUATION, ...saved.situation } });
       }
     } catch {}
   }, []);

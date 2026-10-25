@@ -10,11 +10,11 @@
       {"name": "Coolant flush", "cost": 150, "interval": 100000}
     ],
     "replacement_options": [
-      {"name": "2021 Camry LE (CPO)", "price": 24500, "kind": "cpo"},
-      {"name": "2025 Camry LE", "price": 29800, "kind": "new"},
-      {"name": "2022 Camry Hybrid LE (CPO)", "price": 26900, "kind": "cpo"},
-      {"name": "2021 Corolla LE (CPO)", "price": 19500, "kind": "cpo"},
-      {"name": "2022 RAV4 Hybrid XLE (CPO)", "price": 31500, "kind": "cpo"}
+      {"name": "2026 Corolla LE", "price": 24500, "kind": "new"},
+      {"name": "2026 Corolla Cross L", "price": 25335, "kind": "new"},
+      {"name": "2026 Camry Hybrid LE", "price": 29000, "kind": "new"},
+      {"name": "2026 RAV4 Hybrid LE", "price": 31900, "kind": "new"},
+      {"name": "2026 Sienna LE", "price": 40120, "kind": "new"}
     ],
     "repair_quotes": [
       {"shop": "Austin Transmission Co.", "estimate": 3200, "source": "fixture"},
@@ -32,10 +32,11 @@
       {"name": "Coolant flush", "cost": 150, "interval": 100000}
     ],
     "replacement_options": [
-      {"name": "2019 Corolla LE (used)", "price": 16900, "kind": "used"},
-      {"name": "2025 Corolla LE", "price": 23000, "kind": "new"},
-      {"name": "2020 Prius L Eco (used)", "price": 18400, "kind": "used"},
-      {"name": "2020 Corolla Hybrid LE (used)", "price": 18900, "kind": "used"}
+      {"name": "2026 Corolla LE", "price": 24500, "kind": "new"},
+      {"name": "2026 Corolla Cross L", "price": 25335, "kind": "new"},
+      {"name": "2026 Camry Hybrid LE", "price": 29000, "kind": "new"},
+      {"name": "2026 RAV4 Hybrid LE", "price": 31900, "kind": "new"},
+      {"name": "2026 Sienna LE", "price": 40120, "kind": "new"}
     ],
     "repair_quotes": [
       {"shop": "South Austin Auto A/C", "estimate": 1150, "source": "fixture"},
@@ -53,11 +54,11 @@
       {"name": "Coolant flush", "cost": 150, "interval": 100000}
     ],
     "replacement_options": [
-      {"name": "2021 RAV4 XLE (CPO)", "price": 28900, "kind": "cpo"},
-      {"name": "2025 RAV4 LE", "price": 32500, "kind": "new"},
-      {"name": "2022 RAV4 Hybrid LE (CPO)", "price": 30500, "kind": "cpo"},
-      {"name": "2022 Corolla Cross L (CPO)", "price": 23900, "kind": "cpo"},
-      {"name": "2021 Highlander L (CPO)", "price": 32900, "kind": "cpo"}
+      {"name": "2026 Corolla LE", "price": 24500, "kind": "new"},
+      {"name": "2026 Corolla Cross L", "price": 25335, "kind": "new"},
+      {"name": "2026 Camry Hybrid LE", "price": 29000, "kind": "new"},
+      {"name": "2026 RAV4 Hybrid LE", "price": 31900, "kind": "new"},
+      {"name": "2026 Sienna LE", "price": 40120, "kind": "new"}
     ],
     "repair_quotes": [
       {"shop": "North Austin Toyota Service", "estimate": 420, "source": "fixture"},
@@ -75,11 +76,11 @@
       {"name": "Coolant flush", "cost": 150, "interval": 100000}
     ],
     "replacement_options": [
-      {"name": "2021 Camry LE (CPO)", "price": 24500, "kind": "cpo"},
-      {"name": "2025 Camry LE", "price": 29800, "kind": "new"},
-      {"name": "2022 Camry Hybrid LE (CPO)", "price": 26900, "kind": "cpo"},
-      {"name": "2021 Corolla LE (CPO)", "price": 19500, "kind": "cpo"},
-      {"name": "2022 RAV4 Hybrid XLE (CPO)", "price": 31500, "kind": "cpo"}
+      {"name": "2026 Corolla LE", "price": 24500, "kind": "new"},
+      {"name": "2026 Corolla Cross L", "price": 25335, "kind": "new"},
+      {"name": "2026 Camry Hybrid LE", "price": 29000, "kind": "new"},
+      {"name": "2026 RAV4 Hybrid LE", "price": 31900, "kind": "new"},
+      {"name": "2026 Sienna LE", "price": 40120, "kind": "new"}
     ],
     "repair_quotes": []
   }

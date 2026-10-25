@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = ""
     llm_base_url: str = ""
+    # Comma-separated models tried after the main one on transient failures. Empty uses the
+    # provider default in app/clients/llm.py (muse-spark-1.2 for meta/muse).
+    llm_fallback_models: str = ""
     llm_timeout_seconds: float = 20.0
     # Muse Spark reasons before answering, and those tokens count against max_tokens.
     llm_reasoning_effort: str = ""

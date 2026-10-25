@@ -95,6 +95,11 @@ class KRTResult(BaseModel):
     suggested_models: list[SuggestedModel]
     trade_affordable: bool
 
+class OptionExplanation(BaseModel):
+    brief: str  # one sentence under the option's monthly cost
+    details: str  # a few sentences for the option's "Why?" drop-down
+
+
 class AnalysisResult(BaseModel):
     profile_id: str = ""
     recommendation: Literal["keep", "refinance", "trade"]
@@ -110,6 +115,11 @@ class AnalysisResult(BaseModel):
     market: MarketData | None = None
     explanation: str = ""  # short, plain-language summary (Explanation Agent)
     explanation_details: str = ""  # longer version with the full numbers (drop-down)
+    # Brief + detailed explanation for each option, keyed keep | trade | refinance.
+    option_explanations: dict[str, OptionExplanation] = Field(default_factory=dict)
+    # The repair and car value the engine scored (from the Cost Agent quote).
+    repair: "RepairEstimate | None" = None
+    car_value: float | None = None
 
     # Legacy chart data for the old dashboard (app/page.tsx); empty now.
     curve: list[CurvePoint] = Field(default_factory=list)
@@ -225,7 +235,7 @@ class CostQuoteRequest(BaseModel):
 
 
 class RepairClassification(BaseModel):
-    category: str | None  # REPAIR_CATEGORIES or SYMPTOMS key; None when unrecognized
+    category: str | None  # REPAIR_CATEGORIES, GENERAL_TIERS, or SYMPTOMS key; None when unrecognized
     label: str | None
     kind: Literal["repair", "symptom", "multiple", "unknown"]
     quotable: bool

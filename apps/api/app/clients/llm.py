@@ -6,15 +6,18 @@ OpenAI-compatible chat completions API (Meta Muse, OpenAI, Groq, OpenRouter, Gem
 endpoint, ...). Configure it with LLM_PROVIDER, LLM_API_KEY and optionally LLM_MODEL,
 LLM_BASE_URL, LLM_REASONING_EFFORT and LLM_MAX_TOKENS.
 
-`explain` falls back to a deterministic template when USE_FIXTURES=true, LLM_PROVIDER=none,
-LLM_API_KEY is empty, the request fails, or the reply contains a number it wasn't given.
+`explain` uses the LLM whenever a provider and key are set (USE_FIXTURES only controls demo
+data, not the LLM). It falls back to a deterministic template when LLM_PROVIDER=none,
+LLM_API_KEY is empty, the request fails or times out, the reply isn't usable JSON, or the reply
+contains a number it wasn't given. Each of the two texts (summary, details) falls back on its own.
 """
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 import re
+import time
 from typing import Any
 
 import httpx
@@ -27,6 +30,9 @@ DISCLAIMER = (
     "Prices and recommendations are estimates built on synthetic data, not financial advice."
 )
 SHORT_DISCLAIMER = "Estimates, not financial advice."
+# /analyze waits at most this long for the written explanation, then uses the template, so the
+# results page never stalls on the LLM (the frontend gives /analyze 20s in total).
+EXPLAIN_TIMEOUT_SECONDS = 10.0
 
 # Default base URLs per provider. Anything else needs LLM_BASE_URL.
 DEFAULT_BASE_URLS = {
@@ -43,6 +49,12 @@ DEFAULT_BASE_URLS = {
 DEFAULT_MODELS = {"meta": "muse-spark-1.3", "muse": "muse-spark-1.3"}
 # Muse Spark reasons before answering; "minimal" keeps those tokens from eating max_tokens.
 DEFAULT_REASONING_EFFORT = {"meta": "minimal", "muse": "minimal"}
+# Models tried after the main one when LLM_FALLBACK_MODELS is empty. muse-spark-1.3
+# intermittently answers 404 model_not_found for a model it just served.
+DEFAULT_FALLBACK_MODELS = {"meta": ["muse-spark-1.2"], "muse": ["muse-spark-1.2"]}
+# Retried once on the same model, then the next model is tried. Timeouts skip the retry.
+TRANSIENT_STATUS = {404, 408, 409, 429, 500, 502, 503, 504}
+ATTEMPTS_PER_MODEL = 2
 
 # Recommendation values: "keep" | "trade" | "refinance".
 # Older names from the scaffold and earlier plans map onto them.
@@ -142,8 +154,13 @@ def _complete(
     system: str | None = None,
     temperature: float = 0.2,
     max_tokens: int | None = None,
+    timeout: float | None = None,
 ) -> str:
-    """Send one chat completion request and return the reply text. Raises LLMError."""
+    """Send one chat completion request and return the reply text. Raises LLMError.
+
+    Transient failures are retried, then the fallback models are tried. `timeout` caps the
+    total time across all of that (used by explain() so /analyze never stalls on the LLM).
+    """
     s = get_settings()
     if not llm_configured():
         raise LLMError(f"LLM provider '{s.llm_provider}' is not configured")
@@ -157,7 +174,6 @@ def _complete(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     body: dict[str, Any] = {
-        "model": model,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens or s.llm_max_tokens,
@@ -166,22 +182,52 @@ def _complete(
     if effort:
         body["reasoning_effort"] = effort
 
-    try:
-        r = httpx.post(
-            _chat_url(),
-            headers={
-                "Authorization": f"Bearer {s.llm_api_key.strip()}",
-                "Content-Type": "application/json",
-            },
-            json=body,
-            timeout=s.llm_timeout_seconds,
-        )
-        r.raise_for_status()
-        return _content_from_response(r.json())
-    except LLMError:
-        raise
-    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as e:
-        raise LLMError(f"LLM request failed: {e}") from e
+    url = _chat_url()
+    last_error: Exception | None = None
+    # `timeout` (if given) is a total budget across all retries and fallback models.
+    deadline = time.monotonic() + timeout if timeout else None
+    for candidate in _models(model):
+        for _ in range(ATTEMPTS_PER_MODEL):
+            attempt_timeout = s.llm_timeout_seconds
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0.5:
+                    raise LLMError(f"LLM time budget of {timeout}s used up: {last_error}")
+                attempt_timeout = min(attempt_timeout, remaining)
+            try:
+                r = httpx.post(
+                    url,
+                    headers={
+                        "Authorization": f"Bearer {s.llm_api_key.strip()}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"model": candidate, **body},
+                    timeout=attempt_timeout,
+                )
+                r.raise_for_status()
+                return _content_from_response(r.json())
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code not in TRANSIENT_STATUS:
+                    raise LLMError(f"LLM request failed: {e}") from e
+                last_error = e
+            except httpx.TimeoutException as e:
+                last_error = e
+                break
+            except httpx.TransportError as e:
+                last_error = e
+            except (ValueError, KeyError, IndexError, TypeError) as e:
+                raise LLMError(f"LLM request failed: {e}") from e
+            log.info("LLM %s attempt failed (%s), retrying", candidate, last_error)
+    raise LLMError(f"LLM request failed: {last_error}") from last_error
+
+
+def _models(model: str) -> list[str]:
+    """The main model first, then the fallbacks, without duplicates."""
+    s = get_settings()
+    fallbacks = [m.strip() for m in s.llm_fallback_models.split(",") if m.strip()]
+    if not fallbacks:
+        fallbacks = DEFAULT_FALLBACK_MODELS.get(s.llm_provider.strip().lower(), [])
+    return list(dict.fromkeys([model, *fallbacks]))
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +239,8 @@ def _complete(
 class Explanation:
     summary: str  # 1-2 sentences for the main results card
     details: str  # full explanation with the numbers, for the "more details" drop-down
+    # Per option (keep | trade | refinance): {"brief": one sentence, "details": a few sentences}.
+    options: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 def normalize_recommendation(rec: str | None) -> str | None:
@@ -324,6 +372,15 @@ def _summary_template(facts: dict) -> str:
 
     if rec not in SHORT_HEADLINES:
         return f"Here's a summary of your options. {SHORT_DISCLAIMER}"
+    pct = krt.get("repair_pct_of_car_value")
+    if (rec == "trade" and _num(pct) and _num(trade) and _num(keep) and trade > keep
+            and best and _num(best.get("monthly_cost"))):
+        # Trade won on the 50% rule, not on monthly cost: lead with the repair-to-value reason.
+        return (
+            f"The repair would cost about {pct:g}% of what {car} is worth, so trading in is "
+            f"your best move. A {best.get('name', 'newer Toyota')} would run about "
+            f"{_money(best['monthly_cost'])} a month, and it fits your budget. {SHORT_DISCLAIMER}"
+        )
     first = SHORT_HEADLINES[rec].format(car=car)
     if rec == "keep" and _num(keep) and _num(trade):
         first += f": about {_money(keep)} a month, compared with {_money(trade)} to trade in."
@@ -339,7 +396,6 @@ def _summary_template(facts: dict) -> str:
         first += "."
     parts = [first[0].upper() + first[1:]]
 
-    pct = krt.get("repair_pct_of_car_value")
     if rec == "keep" and krt.get("trade_affordable") is False:
         parts.append("A new car payment doesn't fit your budget right now.")
     elif rec == "trade" and _num(pct):
@@ -382,19 +438,22 @@ def _details_template(facts: dict) -> str:
     keep, trade, refi = krt.get("keepResult"), krt.get("tradeResult"), krt.get("refinanceResult")
     if _num(keep) and _num(trade):
         costs = f"Estimated monthly cost: keeping {_money(keep)}, trading {_money(trade)}"
-        if _num(refi) and refi != keep:  # equal when there's no loan to refinance
+        has_loan = _num(krt.get("refi_payment")) and krt["refi_payment"] > 0
+        if _num(refi) and refi != keep and has_loan:  # no loan, nothing to refinance
             costs += f", refinancing {_money(refi)}"
         parts.append(costs + ".")
 
     lo, hi = facts.get("repair_cost_low"), facts.get("repair_cost_high")
-    if _num(lo) and _num(hi):
+    if _num(lo) and _num(hi) and lo == hi:
+        parts.append(f"The repair is quoted at {_money(hi)}.")
+    elif _num(lo) and _num(hi):
         parts.append(f"The repair is estimated at {_money(lo)} to {_money(hi)}.")
     elif _num(facts.get("repair_cost")):
         parts.append(f"The repair is estimated at about {_money(facts['repair_cost'])}.")
 
     pct, runway = krt.get("repair_pct_of_car_value"), krt.get("savings_months_after_repair")
     if _num(pct):
-        said_cost = parts and parts[-1].startswith("The repair is estimated")
+        said_cost = parts and parts[-1].startswith(("The repair is estimated", "The repair is quoted"))
         lead = "That's" if said_cost else "The repair is"
         sentence = f"{lead} about {pct:g}% of what the car is worth"
         if _num(runway):
@@ -458,8 +517,141 @@ def _details_template(facts: dict) -> str:
     return " ".join(parts)
 
 
+# --- per-option explanations ---------------------------------------------------
+
+KIND_NAMES = {"new": "new", "cpo": "certified pre-owned", "used": "used"}
+
+
+def _repair_phrase(facts: dict) -> str | None:
+    """'quoted at $1,450 by South Austin Auto A/C' / 'estimated at $2,750 to $4,950'."""
+    lo, hi = facts.get("repair_cost_low"), facts.get("repair_cost_high")
+    if facts.get("repair_is_quote") and _num(hi):
+        shop = facts.get("repair_shop")
+        return f"quoted at {_money(hi)}" + (f" by {shop}" if shop else "")
+    if _num(lo) and _num(hi) and lo != hi:
+        return f"estimated at {_money(lo)} to {_money(hi)}"
+    if _num(facts.get("repair_cost")):
+        return f"estimated at about {_money(facts['repair_cost'])}"
+    return None
+
+
+def _keep_option(facts: dict, krt: dict, rec: str, car: str) -> dict[str, str]:
+    keep, pct, life = krt.get("keepResult"), krt.get("repair_pct_of_car_value"), krt.get("remaining_life_pct")
+    runway = krt.get("savings_months_after_repair")
+    if rec == "keep":
+        brief = ("A contained repair keeps you on the road without a new car payment."
+                 if krt.get("trade_affordable") is False
+                 else "Fixing it costs less each month than replacing it.")
+    elif rec == "trade" and _num(pct) and _num(life):
+        brief = (f"Cheaper each month, but the repair costs about {pct:g}% of what {car} is worth, "
+                 f"and it has about {life:g}% of its life left.")
+    else:
+        brief = "You'd keep paying your current loan, which costs more than refinancing."
+
+    parts = []
+    if _num(keep):
+        parts.append(f"Repairing and keeping {car} costs about {_money(keep)} a month, counting the "
+                     "repair spread over three years and expected upkeep.")
+    repair = _repair_phrase(facts)
+    if repair and _num(pct):
+        parts.append(f"The repair is {repair}, about {pct:g}% of what the car is worth.")
+    elif repair:
+        parts.append(f"The repair is {repair}.")
+    if _num(runway):
+        parts.append("It costs more than your current savings." if runway < 0 else
+                     f"After paying for it, your savings would cover about {runway:g} "
+                     f"month{'' if runway == 1 else 's'} of spending.")
+    if _num(life):
+        tail = ", so more big repairs are likely before long" if rec == "trade" else ""
+        parts.append(f"The car has about {life:g}% of its expected life left{tail}.")
+    return {"brief": brief, "details": " ".join(parts)}
+
+
+def _trade_option(facts: dict, krt: dict, rec: str, car: str) -> dict[str, str]:
+    picks = [m for m in (krt.get("suggested_models") or []) if isinstance(m, dict)]
+    best = picks[0] if picks else None
+    pct, affordable = krt.get("repair_pct_of_car_value"), krt.get("trade_affordable")
+    if rec == "trade" and _num(pct):
+        share = "more than" if pct >= 100 else f"about {pct:g}% of"
+        brief = f"The repair costs {share} what {car} is worth, and a new Toyota fits your budget."
+    elif affordable is False:
+        brief = "A new car payment doesn't fit your budget right now."
+    elif best and _num(best.get("monthly_cost")):
+        brief = f"A {best.get('name', 'newer Toyota')} would run about {_money(best['monthly_cost'])} a month all in."
+    else:
+        brief = "Put this car toward a newer Toyota."
+    if not best:
+        return {"brief": brief, "details": ""}
+
+    name = best.get("name", "a newer Toyota")
+    kind = KIND_NAMES.get(str(best.get("kind")), "")
+    parts = [f"The best fit is a {kind + ' ' if kind else ''}{name}"
+             + (f" at {_money(best['price'])}" if _num(best.get("price")) else "") + "."]
+    if _num(best.get("new_payment")) and _num(best.get("down_payment")):
+        down = f"{_money(best['down_payment'])} down" if best["down_payment"] > 0 else "no money down"
+        parts.append(f"With {down} and {car} traded in, the loan payment "
+                     f"would be about {_money(best['new_payment'])} a month.")
+    extras = []
+    if _num(best.get("insurance_delta")) and best["insurance_delta"] > 0:
+        extras.append(f"insurance would go up about {_money(best['insurance_delta'])} a month")
+    if _num(best.get("fuel_delta")) and best["fuel_delta"] < 0:
+        extras.append(f"you'd save about {_money(-best['fuel_delta'])} a month on gas")
+    elif _num(best.get("fuel_delta")) and best["fuel_delta"] > 0:
+        extras.append(f"gas would cost about {_money(best['fuel_delta'])} more a month")
+    if extras:
+        parts.append("Compared with your current car, " + " and ".join(extras) + ".")
+    if _num(best.get("monthly_cost")):
+        parts.append(f"All in, that's about {_money(best['monthly_cost'])} a month.")
+    afford = facts.get("affordability") if isinstance(facts.get("affordability"), dict) else {}
+    max_pay, surplus = afford.get("max_comfortable_payment"), afford.get("monthly_surplus")
+    if _num(max_pay) and max_pay > 0:
+        parts.append(f"The loan payment is {'under' if affordable else 'over'} your comfortable "
+                     f"payment of {_money(max_pay)} a month.")
+    elif _num(surplus):
+        parts.append(f"You have about {_money(surplus)} left over each month, so there's no room "
+                     "for a car payment right now.")
+    others = [m for m in picks[1:3] if _num(m.get("monthly_cost"))]
+    if others:
+        parts.append("Other good fits: " + " and ".join(
+            f"{m.get('name')} (about {_money(m['monthly_cost'])} a month)" for m in others) + ".")
+    return {"brief": brief, "details": " ".join(parts)}
+
+
+def _refinance_option(facts: dict, krt: dict, rec: str, car: str) -> dict[str, str]:
+    refi_pay, refi, keep = krt.get("refi_payment"), krt.get("refinanceResult"), krt.get("keepResult")
+    if not (_num(refi_pay) and refi_pay > 0):
+        cap = car[0].upper() + car[1:]
+        return {
+            "brief": f"{cap} is paid off, so there's no loan to refinance.",
+            "details": "Refinancing replaces a car loan you already have with a cheaper one. "
+                       f"{cap} has no loan balance, so your real choices are repairing it or trading it in.",
+        }
+    parts = [f"Refinancing your remaining loan would set the payment at about {_money(refi_pay)} a month."]
+    if _num(refi) and _num(keep):
+        parts.append(f"All in, that's about {_money(refi)} a month, compared with {_money(keep)} "
+                     "on your current loan.")
+    repair = _repair_phrase(facts)
+    if repair:
+        parts.append(f"You'd still pay for the repair, {repair}.")
+    return {"brief": f"Keep {car} and lower your loan payment to about {_money(refi_pay)} a month.",
+            "details": " ".join(parts)}
+
+
+def _options_template(facts: dict) -> dict[str, dict[str, str]]:
+    """Brief + detailed explanation per option. Only formats numbers from `facts`."""
+    rec = facts.get("recommendation")
+    krt = facts.get("krt") if isinstance(facts.get("krt"), dict) else {}
+    car = _car_name(facts)
+    return {
+        "keep": _keep_option(facts, krt, rec, car),
+        "trade": _trade_option(facts, krt, rec, car),
+        "refinance": _refinance_option(facts, krt, rec, car),
+    }
+
+
 def _template(facts: dict) -> Explanation:
-    return Explanation(summary=_summary_template(facts), details=_details_template(facts))
+    return Explanation(summary=_summary_template(facts), details=_details_template(facts),
+                       options=_options_template(facts))
 
 
 # --- guardrail: the LLM may only restate numbers it was given ----------------
@@ -506,8 +698,16 @@ def _invented_numbers(text: str, facts: dict) -> list[str]:
     return bad
 
 
-def _llm_enabled_for_explain() -> bool:
-    return llm_configured() and not get_settings().use_fixtures
+def _reply_object(reply: str) -> dict:
+    """The JSON object in an LLM reply, tolerating code fences or stray prose around it."""
+    text = _strip_code_fence(reply)
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end <= start:
+        raise ValueError("no JSON object in reply")
+    data = json.loads(text[start : end + 1])
+    if not isinstance(data, dict):
+        raise ValueError("reply is not a JSON object")
+    return data
 
 
 def _checked(text: Any, facts: dict, fallback: str, disclaimer: str, label: str) -> str:
@@ -536,7 +736,7 @@ def explain(context: dict) -> Explanation:
     """
     facts = _build_facts(context)
     fallback = _template(facts)
-    if not _llm_enabled_for_explain():
+    if not llm_configured():
         return fallback
 
     try:
@@ -544,10 +744,9 @@ def explain(context: dict) -> Explanation:
             "Explain this result. Facts (JSON):\n" + json.dumps(facts, default=str),
             system=EXPLAIN_SYSTEM_PROMPT,
             max_tokens=max(get_settings().llm_max_tokens, 1500),
+            timeout=EXPLAIN_TIMEOUT_SECONDS,
         )
-        data = json.loads(_strip_code_fence(reply))
-        if not isinstance(data, dict):
-            raise ValueError("reply is not a JSON object")
+        data = _reply_object(reply)
     except (LLMError, ValueError) as e:
         log.warning("explain: falling back to template (%s)", e)
         return fallback
@@ -555,6 +754,7 @@ def explain(context: dict) -> Explanation:
     return Explanation(
         summary=_checked(data.get("summary"), facts, fallback.summary, SHORT_DISCLAIMER, "summary"),
         details=_checked(data.get("details"), facts, fallback.details, DISCLAIMER, "details"),
+        options=fallback.options,  # per-option text always comes from the template
     )
 
 

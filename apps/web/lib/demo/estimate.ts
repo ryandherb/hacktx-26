@@ -129,9 +129,11 @@ const MAINT_PER_MILE = 75 / 5000 + 30 / 5000 + 90 / 30000 + 300 / 40000 + 150 / 
 const USAGE = { low: 0.75, medium: 1, high: 1.3 } as const;
 // market.json "custom" replacement options, with specs from seeds/toyota_catalog.json.
 const REPLACEMENTS = [
-  { name: "2021 Camry LE (CPO)", price: 24500, kind: "cpo", seats: 5, mpg: 32, body: "sedan" },
-  { name: "2022 Camry Hybrid LE (CPO)", price: 26900, kind: "cpo", seats: 5, mpg: 51, body: "sedan" },
-  { name: "2021 Corolla LE (CPO)", price: 19500, kind: "cpo", seats: 5, mpg: 33, body: "sedan" },
+  { name: "2026 Corolla LE", price: 24500, kind: "new", seats: 5, mpg: 35, body: "sedan" },
+  { name: "2026 Corolla Cross L", price: 25335, kind: "new", seats: 5, mpg: 32, body: "suv" },
+  { name: "2026 Camry Hybrid LE", price: 29000, kind: "new", seats: 5, mpg: 51, body: "sedan" },
+  { name: "2026 RAV4 Hybrid LE", price: 31900, kind: "new", seats: 5, mpg: 40, body: "suv" },
+  { name: "2026 Sienna LE", price: 40120, kind: "new", seats: 8, mpg: 36, body: "minivan" },
 ];
 
 const amortize = (principal: number, apr: number, months: number) =>
@@ -212,6 +214,13 @@ export function offlineCustomAnalysis(c: CustomProfile, quote: CostQuoteResult |
       current_vehicle_value_low: vehicle.private_sale_low, current_vehicle_value_high: vehicle.private_sale_high,
       scheduled_maintenance: [], replacement_options: REPLACEMENTS.map(({ name, price, kind }) => ({ name, price, kind })), repair_quotes: [],
     },
+    option_explanations: {
+      keep: { brief: `Fix it and keep driving for about ${money(keep)} a month.`, details: `The ${money(repairCost)} repair spread over three years, plus maintenance and likely repairs on a ${p.mileage.toLocaleString()}-mile car${p.monthly_payment ? `, plus your ${money(p.monthly_payment)} car payment` : ""}.` },
+      trade: { brief: `A ${best.name} for about ${money(best.monthly_cost)} a month.`, details: `${money(best.down_payment)} down, then ${money(best.new_payment)} a month for 60 months after your ${money(carValue)} trade-in.${tradeAffordable ? "" : ` That's more than the ${money(maxPayment)} a month your budget comfortably allows.`}` },
+      refinance: { brief: p.loan_balance ? `Refinance your loan: about ${money(refinance)} a month.` : "No car loan to refinance.", details: p.loan_balance ? `Your ${money(p.loan_balance)} balance re-spread over 60 months at ${(apr * 100).toFixed(1)}% APR is ${money(refiPayment)} a month.` : "Refinancing only helps when there's a loan on the car." },
+    },
+    repair: quote?.repair ?? null,
+    car_value: carValue,
     explanation: `${summary} Estimates, not financial advice.`,
     explanation_details: `Repair estimate ${money(repairCost)} on a car worth about ${money(carValue)} as a trade-in. Monthly cost over three years: keep ${money(keep)}, trade ${money(best.monthly_cost)}${p.loan_balance ? `, refinance ${money(refinance)}` : ""}. Comfortable new payment: up to ${money(maxPayment)} a month.`,
     curve: [],

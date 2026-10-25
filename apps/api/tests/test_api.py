@@ -150,3 +150,39 @@ def test_analyze_rejects_quote_for_another_profile():
     quote = client.post("/quote", json={"profile_id": "maria", "quote_input": MARIA_QUOTE_INPUT}).json()
     r = client.post("/analyze", json={"profile_id": "dev", "quote": quote})
     assert r.status_code == 422
+
+
+# Demo answers from the web app's PFO step for each demo profile.
+MARIA_PFO = {"down_payment": 6500, "credit_band": "excellent", "other_debt_load": "none",
+             "upcoming_major_expense": False, "income_stability": "growing", "car_usage": "medium"}
+DEV_PFO = {"down_payment": 0, "credit_band": "fair", "other_debt_load": "none",
+           "upcoming_major_expense": False, "income_stability": "at_risk", "car_usage": "medium"}
+
+
+def _demo(pid, pfo_answers, manual_quote=None):
+    survey = client.post("/pre-quote-survey", json={"profile_id": pid}).json()
+    body = {"profile_id": pid, "quote_input": survey["quote_input"]}
+    if manual_quote:
+        body["manual_quote"] = manual_quote
+    quote = client.post("/quote", json=body).json()
+    pfo = client.post("/onboarding", json={"answers": pfo_answers}).json()["factors"]
+    return client.post("/analyze", json={"profile_id": pid, "quote": quote, "pfo_factors": pfo}).json()
+
+
+def test_demo_profiles_get_different_recommendations():
+    maria = _demo("maria", MARIA_PFO)
+    dev = _demo("dev", DEV_PFO, {"amount": 1450, "shop": "South Austin Auto A/C"})
+    assert maria["recommendation"] == "trade"  # 50% rule: repair is worth more than the car
+    assert maria["suggested_models"][0]["name"].startswith("2026 ")
+    assert "trading in is your best move" in maria["explanation"]
+    assert dev["recommendation"] == "keep"  # no replacement fits his budget
+
+
+def test_every_option_gets_a_brief_and_detailed_explanation():
+    for body in (_demo("maria", MARIA_PFO), _demo("dev", DEV_PFO, {"amount": 1450, "shop": "South Austin Auto A/C"})):
+        opts = body["option_explanations"]
+        assert set(opts) == {"keep", "trade", "refinance"}
+        assert all(o["brief"] and o["details"] for o in opts.values())
+        assert "no loan to refinance" in opts["refinance"]["brief"]
+    dev = _demo("dev", DEV_PFO, {"amount": 1450, "shop": "South Austin Auto A/C"})
+    assert "quoted at $1,450 by South Austin Auto A/C" in dev["option_explanations"]["keep"]["details"]

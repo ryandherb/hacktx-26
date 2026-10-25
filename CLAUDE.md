@@ -63,8 +63,10 @@ npm run lint
 
 ## Recommendation values
 
-`keep` | `trade` | `refinance`, chosen by `krt.recommend()` from the monthly costs in
-`KRTResult` (lowest affordable cost; keep wins ties). Keep `schemas.py`, `lib/api.ts`, and
+`keep` | `trade` | `refinance`, chosen by `simulate.set_recommendation()` from the monthly
+costs in `KRTResult` (lowest affordable cost; keep wins ties). Exception, the "50% rule":
+trade wins when the repair is at least 50% of the car's value, the car has 30% or less of its
+life left, and a replacement is affordable. Keep `schemas.py`, `lib/api.ts`, and
 the assertion in `tests/test_api.py` in sync if this changes.
 
 ## Hackathon

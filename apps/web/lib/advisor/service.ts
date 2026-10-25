@@ -44,6 +44,9 @@ export function backendReachable(): boolean {
 
 // Runs a live call with a timeout. Network failures and timeouts return null (-> offline
 // snapshot); HTTP errors from a reachable backend are real problems and are thrown.
+// Timeouts are short enough for a live presentation: if the backend is slow (e.g. Render's free
+// tier waking up), the page shows the saved sample results instead of stalling. Normal responses
+// take well under 5s; the backend caps the Muse explanation at 10s and falls back to its template.
 async function live<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T | null> {
   if (!backendReachable()) return null;
   const ctrl = new AbortController();
@@ -66,7 +69,7 @@ export async function submitProblem(profileId: string, text: string, vehicle: Ve
   const body = profileId === CUSTOM_PROFILE_ID
     ? { answers: { repair_type: text, vehicle_model: vehicle.vehicle_model, vehicle_year: vehicle.vehicle_year, location: vehicle.zip_code } }
     : { profile_id: profileId, answers: { repair_type: text } };
-  const r = await live((signal) => api.preQuoteSurvey(body, { signal }), 5000);
+  const r = await live((signal) => api.preQuoteSurvey(body, { signal }), 10000);
   if (r) return { data: r, mocked: false };
   // Offline: same shape the survey returns for a complete profile, with the text the user typed.
   const quote_input = { repair_type: text, vehicle_model: vehicle.vehicle_model, vehicle_year: vehicle.vehicle_year, location: vehicle.zip_code };
@@ -83,7 +86,7 @@ export async function getQuote(profileId: string, quoteInput: PreQuoteInput, man
   const body = c
     ? { profile_id: null, quote_input: quoteInput, mileage: c.profile.mileage, manual_quote: manualQuote }
     : { profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote };
-  const r = await live((signal) => api.quote(body, { signal }), 8000);
+  const r = await live((signal) => api.quote(body, { signal }), 20000); // Muse retries + Render cold starts
   if (r) return { data: r, mocked: false };
   return { mocked: true, data: offlineQuote(profileId, quoteInput, manualQuote) };
 }
@@ -145,7 +148,15 @@ export type OptionsInputs = {
   availableCash: number | null; // from the bank step
 };
 
+// Demo profiles always show their preset results (a saved run of the real backend with the
+// demo answers), so the demo tells the same story every time, with or without a backend.
+const PRESET_PROFILES = new Set(["maria", "dev"]);
+
 export async function getOptions(profileId: string, inputs: OptionsInputs): Promise<Served<Analysis>> {
+  if (PRESET_PROFILES.has(profileId) && SNAPSHOT[profileId]) {
+    await new Promise((r) => setTimeout(r, 2600)); // lets the "crunching numbers" screen read naturally
+    return { mocked: true, data: SNAPSHOT[profileId].analysis };
+  }
   const c = custom(profileId);
   // A backend deployed before custom_profile support answers the judge's profile with 404;
   // show the offline estimate instead of an error (the seeded profiles still surface errors).
@@ -157,7 +168,7 @@ export async function getOptions(profileId: string, inputs: OptionsInputs): Prom
     // since its open issue is optional.
     const quote = inputs.quote?.complete && (!inputs.quoteMocked || !!c) ? inputs.quote : null;
     return api.analyze(profileId, { quote, pfo_factors: pfo.factors, custom_profile: c && customProfileIn(c) }, { signal });
-  }, 10000));
+  }, 20000)); // includes the Explanation Agent call
   if (r) return { data: r, mocked: false };
   if (c) return { mocked: true, data: offlineCustomAnalysis(c, inputs.quote, offlinePfo(inputs)) };
   return { mocked: true, data: snapshotFor(profileId).analysis };
@@ -184,6 +195,15 @@ const BAND_APR: Record<string, number> = { excellent: 0.055, good: 0.07, fair: 0
 function offlinePfo(inputs: OptionsInputs): PFOFactors {
   const a = toPfoAnswers(inputs.situation, inputs.availableCash);
   return { apr: (a.credit_band && BAND_APR[a.credit_band]) ?? null, down_payment: a.down_payment, car_usage: a.car_usage ?? "medium" };
+}
+
+// ---- Car Fund (Capital One Nessie savings account, simulated in fixture mode) ------------
+
+export async function startCarFund(profileId: string, monthly: number, target: number): Promise<Served<api.CarFund>> {
+  // The judge's profile has no Nessie customer, so its Car Fund is always simulated.
+  const r = custom(profileId) ? null : await live(() => api.createCarFund(profileId, monthly, target), 5000);
+  if (r) return { data: r, mocked: false };
+  return { mocked: true, data: { account_id: "demo-car-fund", monthly_amount: monthly, target_amount: target, simulated: true } };
 }
 
 // ---- Bank connection (Capital One Nessie) ---------------------------------------------

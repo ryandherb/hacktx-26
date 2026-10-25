@@ -8,10 +8,11 @@ from pydantic import BaseModel, Field, ValidationError
 
 from .clients import muse
 from .models.schemas import RepairClassification
-from .engine.cost_tables import REPAIR_CATEGORIES, SYMPTOMS, normalize_text
+from .engine.cost_tables import GENERAL_TIERS, REPAIR_CATEGORIES, SYMPTOMS, normalize_text
 
 MIN_CONFIDENCE = 0.7
 KEYWORD_CONFIDENCE = 0.9
+MAX_LABEL_LENGTH = 80
 
 REASONS = {
     "symptom": "This describes a symptom that could come from several different problems.",
@@ -26,6 +27,7 @@ class _LlmClassification(BaseModel):
     category: str
     confidence: float = Field(ge=0, le=1)
     multiple_repairs: bool = False
+    label: str | None = None  # names the repair when a general tier is picked
 
 
 SYSTEM_PROMPT = (
@@ -37,24 +39,31 @@ SYSTEM_PROMPT = (
 def _user_prompt(text: str) -> str:
     repairs = "\n".join(f"- {key}: {c['label']}" for key, c in REPAIR_CATEGORIES.items())
     symptoms = "\n".join(f"- {key}: {c['label']}" for key, c in SYMPTOMS.items())
+    tiers = "\n".join(f"- {key}: {c['scope']}" for key, c in GENERAL_TIERS.items())
     return (
         "Specific repairs (the customer knows what needs fixing):\n"
         f"{repairs}\n\n"
+        "General repair tiers (a specific repair that is not in the list above), by typical "
+        "shop scope:\n"
+        f"{tiers}\n\n"
         "Symptoms (too vague to price without a shop diagnosis):\n"
         f"{symptoms}\n\n"
-        "Pick the single best id from either list. If the description names a specific part or "
-        "repair, prefer the repair id even if a symptom is also mentioned. Use \"unknown\" if "
-        "nothing fits.\n"
+        "Pick the single best id. If the description names a specific part or repair, prefer a "
+        "specific repair id even if a symptom is also mentioned. If it names a specific part or "
+        "repair that is not in that list, pick the general tier that matches its scope and give "
+        "a short label naming the repair (for example \"Front bumper replacement\"). Use a "
+        "symptom id when the cause is unclear, and \"unknown\" if it isn't a car repair.\n"
         'Return {"category": "<id or unknown>", "confidence": <0 to 1>, '
-        '"multiple_repairs": <true if it names more than one distinct repair>}\n\n'
+        '"multiple_repairs": <true if it names more than one distinct repair>, '
+        '"label": "<short repair name, only for a general tier>"}\n\n'
         f"Description: {text!r}"
     )
 
 
-def _result(category, kind, confidence, method, reason_key=None) -> RepairClassification:
+def _result(category, kind, confidence, method, reason_key=None, label=None) -> RepairClassification:
     quotable = kind == "repair"
     if quotable:
-        label = REPAIR_CATEGORIES[category]["label"]
+        label = label or (REPAIR_CATEGORIES.get(category) or GENERAL_TIERS[category])["label"]
         reason = f"Matched to {label}."
     else:
         label = SYMPTOMS[category]["label"] if kind == "symptom" else None
@@ -103,6 +112,11 @@ def classify_with_llm(text: str) -> RepairClassification | None:
         if parsed.confidence < MIN_CONFIDENCE:
             return _result(None, "unknown", parsed.confidence, "llm", "low_confidence")
         return _result(category, "repair", parsed.confidence, "llm")
+    if category in GENERAL_TIERS:
+        if parsed.confidence < MIN_CONFIDENCE:
+            return _result(None, "unknown", parsed.confidence, "llm", "low_confidence")
+        label = " ".join((parsed.label or "").split())[:MAX_LABEL_LENGTH] or None
+        return _result(category, "repair", parsed.confidence, "llm", label=label)
     if category in SYMPTOMS:
         return _result(category, "symptom", parsed.confidence, "llm")
     return _result(None, "unknown", parsed.confidence, "llm")  # "unknown" or an id outside the list
