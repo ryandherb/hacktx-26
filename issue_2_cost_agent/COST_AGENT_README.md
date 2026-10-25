@@ -174,8 +174,7 @@ The survey doesn't ask about `windfall_expected` (False), `payment_risk_toleranc
    the `LLM_*` lines into `apps/api/.env`.
 6. Schemas: fold `cost_schemas.py` into `models/schemas.py` and `web/lib/cost_api.ts` into
    `lib/api.ts` together when the team syncs schemas (CLAUDE.md rule).
-7. Live shops: replace the fixture lookup in `cost_agent.nearby_shops()` with
-   `serpapi.search("google_maps", ...)`, keeping the fixture path for `USE_FIXTURES=true`.
+7. Shops: `cost_agent.nearby_shops()` stays fixture-backed (no live shop search).
 8. `/analyze` (#3) takes the quote and PFO results, calls `build_handoff()`, and passes
    `**handoff.krt_arguments()` to `krt.score()`. Then retire `valuation.estimated_repair_cost`.
    Swap `cost_schemas.PFOFactors` for the shared `app.models.schemas.PFOFactors`. Both have the

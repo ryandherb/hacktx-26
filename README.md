@@ -6,7 +6,7 @@ Toyota, based on the repair cost, what the car is worth, and what they can actua
 
 - **Toyota:** synthetic customer profiles (vehicle, mileage, loan, service history, open issue)
 - **Capital One Nessie:** mock accounts, deposits, and purchases -> affordability; writes a "Car Fund" savings account
-- **SerpApi:** used-car comps (trade-in value), new/CPO Toyota prices, local repair shops
+- **Market data:** used-car value, new/CPO Toyota prices, and local shops come from fixtures (`app/fixtures/market.json`)
 - **LLM:** turns free-text input into structured fields and writes the plain-language explanation. It never computes numbers.
 - **Optional:** Snowflake as the warehouse for service history and simulation runs
 
@@ -25,12 +25,11 @@ repair issue ──> 1. Cost Agent ──> 2. PFO Agent ──> 3. KRT Engine �
 2. **Cost Agent: quote the repair.** The LLM classifies the issue into a known repair
    category (e.g. `transmission`, `ac_compressor`, `o2_sensor`, `brakes`). Known categories
    are priced from a lookup table of typical parts + labor ranges, adjusted for model and
-   year, with SerpApi (`google_maps`) supplying nearby shops. If the issue can't be
+   year, with nearby shops from fixtures. If the issue can't be
    classified with confidence, or the customer already has a shop quote, the UI asks for
    **manual input**. Output: `repair_cost_low`, `repair_cost_high`, `source`
    (`table` | `manual`).
-   - SerpApi returns shop listings, not prices, so the table is the source of truth for the
-     estimate. Scraped prices from search snippets are too noisy to rely on.
+   - The lookup table is the source of truth for the estimate.
 
 3. **Personal Finance Onboarding (PFO) Agent: front layer of KRT.** A short, bounded
    conversation (about 4–6 questions) covering things Nessie can't show: how long they want
@@ -42,7 +41,7 @@ repair issue ──> 1. Cost Agent ──> 2. PFO Agent ──> 3. KRT Engine �
      backend stays stateless.
 
 4. **KRT Engine: back layer.** Deterministic Python in `apps/api/app/engine/`. It combines:
-   - repair cost (step 2) and current vehicle value / trade-in (SerpApi comps)
+   - repair cost (step 2) and current vehicle value / trade-in (market fixtures)
    - PFO factors (step 3)
    - Nessie affordability: monthly income (from deposits), spend (from purchases), savings
      balance, monthly surplus, runway months, max comfortable payment
@@ -80,7 +79,7 @@ apps/
     app/
       routes.py     HTTP endpoints
       engine/       deterministic math (affordability, valuation, simulation, KRT)
-      clients/      Nessie, SerpApi, LLM wrappers
+      clients/      Nessie, LLM wrappers
       models/       Pydantic schemas
       seeds/        synthetic Toyota profiles + Nessie seeding
       fixtures/     offline Nessie + market data per profile
@@ -128,7 +127,7 @@ Tests: `cd apps/api && pytest`.
 
 ## Going live
 
-1. Add keys to `apps/api/.env` (`NESSIE_API_KEY`, `SERPAPI_API_KEY`, `LLM_PROVIDER`,
+1. Add keys to `apps/api/.env` (`NESSIE_API_KEY`, `LLM_PROVIDER`,
    `LLM_API_KEY`, `LLM_MODEL`).
 2. Seed Nessie: `python -m app.seeds.nessie_seed`. It prints one Nessie customer ID per
    profile. Paste these into `apps/api/app/seeds/toyota_profiles.json` as `nessie_customer_id`.
@@ -136,9 +135,6 @@ Tests: `cd apps/api && pytest`.
      still need to be seeded from `fixtures/nessie.json`. Until they are, live affordability
      will be empty.
 3. Set `USE_FIXTURES=false`. Profiles without a `nessie_customer_id` keep using fixtures.
-
-SerpApi responses are cached in SQLite (`cache.sqlite3`), so repeated demo runs don't use up
-search credits.
 
 ## Where to start
 
@@ -151,7 +147,6 @@ search credits.
 | Affordability | `apps/api/app/engine/affordability.py` | placeholder rules |
 | Valuation | `apps/api/app/engine/valuation.py` | placeholder |
 | Nessie | `apps/api/app/clients/nessie.py` | reads + car-fund write; transfer is TODO; verify endpoints against docs |
-| SerpApi | `apps/api/app/clients/serpapi.py` | search wrapper + cache; live `get_market_data` not implemented |
 | LLM | `apps/api/app/clients/llm.py` | template fallback; wire a provider in `_complete` |
 | Dashboard | `apps/web/app/page.tsx` | persona picker + cost chart; needs quote, PFO, and score screens |
 

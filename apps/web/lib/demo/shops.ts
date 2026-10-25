@@ -1,78 +1,46 @@
-// SAMPLE nearby-shop data for the demo map (fictional businesses, approximate positions).
-// The Cost Agent's /quote only returns shop names today; real listings are planned through
-// SerpApi google_maps on the backend (see issue_2_cost_agent/COST_AGENT_README.md, step 7).
+// Toyota dealerships around Austin, for the "get it diagnosed" map. Names and addresses are from
+// toyota.com's dealer locator (Oct 2026); coordinates are approximate, so "Directions" links search
+// by address instead. Static so the map works with USE_FIXTURES=true (tiles still need network).
 
-export type DemoShop = {
+export type Dealer = {
   name: string;
-  kind: "dealer" | "independent";
-  specialty: string;
-  distanceMi: number;
-  rating: number;
-  reviews: number;
-  hours: string;
-  // Pin position on the stylized map, in percent of its width/height.
-  x: number;
-  y: number;
+  address: string;
+  lat: number;
+  lng: number;
 };
 
-const TOYOTA_SERVICE: Omit<DemoShop, "distanceMi" | "x" | "y"> = {
-  name: "Toyota Certified Service Center",
-  kind: "dealer",
-  specialty: "Factory-trained diagnosis, genuine parts",
-  rating: 4.7,
-  reviews: 1284,
-  hours: "Open until 7 PM",
-};
+export type LatLng = { lat: number; lng: number };
 
-export const DEMO_SHOPS: Record<string, DemoShop[]> = {
-  maria: [
-    { ...TOYOTA_SERVICE, distanceMi: 2.4, x: 68, y: 30 },
-    { name: "Austin Transmission Co.", kind: "independent", specialty: "Transmissions", distanceMi: 1.1, rating: 4.8, reviews: 312, hours: "Open until 6 PM", x: 32, y: 72 },
-    { name: "Central TX Auto Care", kind: "independent", specialty: "General repair", distanceMi: 1.9, rating: 4.6, reviews: 541, hours: "Open until 6 PM", x: 22, y: 34 },
-  ],
-  dev: [
-    { ...TOYOTA_SERVICE, distanceMi: 3.1, x: 72, y: 26 },
-    { name: "South Austin Auto A/C", kind: "independent", specialty: "A/C and diagnostics", distanceMi: 0.8, rating: 4.9, reviews: 208, hours: "Open until 6 PM", x: 34, y: 74 },
-    { name: "Quick Fix Garage", kind: "independent", specialty: "General repair", distanceMi: 1.6, rating: 4.4, reviews: 167, hours: "Open until 5:30 PM", x: 20, y: 40 },
-  ],
-};
-
-// The demo's sample mechanic quote (public/demo/sample-mechanic-quote.{png,pdf}).
-// Uploading exactly this file "reads" it for the demo; any other file asks for the total instead,
-// because the frontend can't actually read documents (that would be a backend OCR/LLM step).
-export type ReadQuote = {
-  shop: string;
-  date: string;
-  vehicle: string;
-  diagnosis: string;
-  items: { description: string; amount: number }[];
-  total: number;
-};
-
-export const SAMPLE_QUOTE_HASHES = [
-  "37316f20ec9ab2d332619280da0c1ecf0f6872d5b0ea23be4692c5435378b955", // .png
-  "02649e1cf14e3679d4b09d554eaf55bc29b83a81032e175c57e38da38ec8eaff", // .pdf
+export const TOYOTA_DEALERS: Dealer[] = [
+  { name: "Toyota of North Austin", address: "8400 Research Blvd, Austin, TX 78758", lat: 30.3586, lng: -97.7186 },
+  { name: "AutoNation Toyota South Austin", address: "4800 S IH-35, Austin, TX 78745", lat: 30.2135, lng: -97.7585 },
+  { name: "Round Rock Toyota", address: "2307 N I-35, Round Rock, TX 78664", lat: 30.5345, lng: -97.688 },
+  { name: "Toyota of Cedar Park", address: "5600 183A Toll Rd, Cedar Park, TX 78641", lat: 30.5265, lng: -97.8135 },
+  { name: "Lost Pines Toyota", address: "806 Highway 71 W, Bastrop, TX 78602", lat: 30.108, lng: -97.333 },
+  { name: "San Marcos Toyota", address: "5101 IH-35 S, San Marcos, TX 78666", lat: 29.837, lng: -97.981 },
 ];
 
-export const SAMPLE_QUOTE: ReadQuote = {
-  shop: "South Austin Auto A/C",
-  date: "Oct 24, 2026",
-  vehicle: "2010 Toyota Corolla S",
-  diagnosis: "Compressor clutch bearing failure and internal compressor wear.",
-  items: [
-    { description: "A/C system diagnosis", amount: 95 },
-    { description: "A/C compressor (remanufactured)", amount: 545 },
-    { description: "Receiver / drier", amount: 68 },
-    { description: "Expansion valve", amount: 52 },
-    { description: "Refrigerant evacuate & recharge", amount: 120 },
-    { description: "Labor: 4.0 hrs @ $130", amount: 520 },
-    { description: "Shop supplies & disposal", amount: 50 },
-  ],
-  total: 1450,
+// Approximate centers of the demo profiles' ZIP codes; anything else falls back to downtown Austin.
+const ZIP_CENTERS: Record<string, LatLng> = {
+  "78705": { lat: 30.293, lng: -97.74 },
+  "78741": { lat: 30.231, lng: -97.721 },
+  "78758": { lat: 30.388, lng: -97.707 },
 };
+const AUSTIN: LatLng = { lat: 30.2672, lng: -97.7431 };
 
-export async function readDemoQuote(file: File): Promise<ReadQuote | null> {
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  const hex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
-  return SAMPLE_QUOTE_HASHES.includes(hex) ? SAMPLE_QUOTE : null;
+export const zipCenter = (zip: string): LatLng => ZIP_CENTERS[zip] ?? AUSTIN;
+
+// Straight-line distance in miles (haversine).
+export function milesBetween(a: LatLng, b: LatLng): number {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
+  return 3958.8 * 2 * Math.asin(Math.sqrt(h));
 }
+
+export function nearestDealers(origin: LatLng, count = 3): (Dealer & { distanceMi: number })[] {
+  return TOYOTA_DEALERS.map((d) => ({ ...d, distanceMi: milesBetween(origin, d) }))
+    .sort((a, b) => a.distanceMi - b.distanceMi)
+    .slice(0, count);
+}
+
+export const directionsUrl = (d: Dealer) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${d.name}, ${d.address}`)}`;
