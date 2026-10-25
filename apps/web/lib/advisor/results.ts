@@ -65,3 +65,22 @@ export function keyNumbers(a: Analysis): KeyNumber[] {
     { value: `About ${Math.round(k.remaining_life * 100)}%`, label: "Car life left" },
   ];
 }
+
+// Conditions that would flip the recommendation, from the same numbers the engine used
+// (the 50% rule and the affordability check in simulate.set_recommendation).
+export function whatWouldChange(a: Analysis): string[] {
+  const k = a.result;
+  if (a.recommendation === "trade") {
+    const half = a.car_value ? ` (about ${money(a.car_value / 2)})` : "";
+    return [`If the repair came in under half your car's value${half}, keeping it would win.`,
+      "If your income drops, repairing becomes the safer choice."];
+  }
+  if (a.recommendation === "keep") {
+    return [
+      k.trade_affordable ? "If the repair grows past half your car's value, trading in gains ground."
+        : "A steady full-time income would make trading in realistic.",
+      "If more big repairs come up, replacing the car gains ground.",
+    ];
+  }
+  return ["If rates rise before you refinance, the savings shrink.", "A large repair on top of the loan could make trading in the better move."];
+}

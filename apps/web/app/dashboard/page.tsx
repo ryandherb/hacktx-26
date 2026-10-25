@@ -222,7 +222,8 @@ export default function Dashboard() {
               onBack={() => advisor.update({ optionsPage: false, planPage: false })} onViewPlan={() => advisor.update({ planPage: true })} />
           </div>
           <div className={`w-1/3 overflow-y-auto px-6 md:px-14 ${planPage ? "" : "max-md:h-0"}`} inert={!planPage}>
-            <PlanPage open={planPage} result={advisor.state.options} onBack={() => advisor.update({ planPage: false })} />
+            <PlanPage open={planPage} result={advisor.state.options} profile={profile}
+              ownerLine={`${d.firstName} · ${title} ${d.trim} · ${profile.mileage.toLocaleString()} miles`} onBack={() => advisor.update({ planPage: false })} />
           </div>
           </div>
         </div>

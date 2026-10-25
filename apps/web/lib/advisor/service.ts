@@ -127,6 +127,14 @@ export async function getOptions(profileId: string, inputs: OptionsInputs): Prom
   return { mocked: true, data: snapshotFor(profileId).analysis };
 }
 
+// ---- Car Fund (Capital One Nessie savings account, simulated in fixture mode) ------------
+
+export async function startCarFund(profileId: string, monthly: number, target: number): Promise<Served<api.CarFund>> {
+  const r = await live(() => api.createCarFund(profileId, monthly, target), 5000);
+  if (r) return { data: r, mocked: false };
+  return { mocked: true, data: { account_id: "demo-car-fund", monthly_amount: monthly, target_amount: target, simulated: true } };
+}
+
 // ---- Bank connection (Capital One Nessie) ---------------------------------------------
 // ILLUSTRATIVE MOCK: reads lib/demo/bank.ts. The summary below is display-only; the team's
 // affordability math (apps/api/app/engine/affordability.py) stays authoritative.
