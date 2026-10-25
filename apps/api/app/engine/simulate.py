@@ -26,7 +26,7 @@ def run(
         valuation.current_value(market),
         afford,
         market,
-        req.replacement_price,
+        valuation.estimated_repair_cost(market),
         snapshot,
         pfo_factors
     ) 
@@ -35,7 +35,7 @@ def run(
     suggested_models = krt_result.suggested_models if recommendation == "trade" else None
     
     return AnalysisResult (
-        reccomendation=recommendation,
+        recommendation=recommendation,
         result=krt_result,
         new_monthly_payment=krt_result.new_payment,
         suggested_models=suggested_models,
@@ -46,11 +46,14 @@ def run(
     
     
 
-def set_recommendation(krt_result: KRTResult):
-    match max(krt_result.keepResult, krt_result.refinanceResult, krt_result.tradeResult):
-        case krt_result.keepResult:
-            return "keep"
-        case krt_result.refinanceResult:
-            return "refinance"
-        case krt_result.tradeResult:
-            return "trade"
+def set_recommendation(krt_result: KRTResult) -> str:
+    """Lowest monthly cost wins. Trade only if a replacement payment is affordable.
+
+    Refinance must be strictly cheaper than keep (they're equal with no loan); ties go to keep.
+    """
+    options = [("keep", krt_result.keepResult)]
+    if krt_result.refinanceResult < krt_result.keepResult:
+        options.append(("refinance", krt_result.refinanceResult))
+    if krt_result.trade_affordable and krt_result.tradeResult < krt_result.keepResult:
+        options.append(("trade", krt_result.tradeResult))
+    return min(options, key=lambda o: o[1])[0]  # min keeps the first on ties

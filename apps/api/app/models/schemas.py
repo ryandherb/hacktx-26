@@ -102,14 +102,24 @@ class KRTResult(BaseModel):
     trade_affordable: bool
 
 class AnalysisResult(BaseModel):
-    reccomendation: Literal["keep", "refinance", "trade"]
+    profile_id: str = ""
+    recommendation: Literal["keep", "refinance", "trade"]
     result: KRTResult
     new_monthly_payment: float
-    
-    suggested_models: list[SuggestedModel] | None = None 
-    
-    apr: float
-    down_payment: float
+
+    suggested_models: list[SuggestedModel] | None = None  # only when recommendation == "trade"
+
+    apr: float | None = None  # None when PFO didn't supply one (engine used its default)
+    down_payment: float | None = None
+
+    affordability: AffordabilityResult | None = None
+    market: MarketData | None = None
+    explanation: str = ""  # short, plain-language summary (Explanation Agent)
+    explanation_details: str = ""  # longer version with the full numbers (drop-down)
+
+    # Legacy chart data for the old dashboard (app/page.tsx); empty now.
+    curve: list[CurvePoint] = Field(default_factory=list)
+    crossover_month: int | None = None
 
 
 class CarFundRequest(BaseModel):

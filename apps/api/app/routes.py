@@ -1,13 +1,14 @@
 from fastapi import APIRouter, HTTPException
 
 from app.clients import llm, nessie, serpapi
-from app.engine import affordability, simulate
+from app.engine import affordability, simulate, valuation
 from app.models.schemas import (
     AnalysisRequest,
     AnalysisResult,
     CarFundRequest,
     CarFundResult,
     MarketData,
+    PFOFactors,
     Profile,
 )
 from app.seeds.loader import get_profile, load_profiles
@@ -40,18 +41,32 @@ def market(profile_id: str):
 @router.post("/analyze", response_model=AnalysisResult)
 def analyze(req: AnalysisRequest):
     profile = _profile_or_404(req.profile_id)
-    afford = affordability.compute(nessie.get_snapshot(profile))
+    snapshot = nessie.get_snapshot(profile)
+    afford = affordability.compute(snapshot)
     mkt = serpapi.get_market_data(profile)
-    curve, crossover, rec = simulate.run(profile, mkt, afford, req)
-    explanation = llm.explain({"crossover_month": crossover, "recommendation": rec})
-    return AnalysisResult(
-        profile_id=profile.id,
-        curve=curve,
-        crossover_month=crossover,
-        recommendation=rec,
-        affordability=afford,
-        market=mkt,
-        explanation=explanation,
+    pfo = PFOFactors(down_payment=req.down_payment)
+
+    # KRT engine: monthly costs, recommendation, and suggested Toyota models.
+    analysis = simulate.run(profile, mkt, afford, req, snapshot, pfo)
+
+    explanation = llm.explain(
+        {
+            "recommendation": analysis.recommendation,
+            "krt": analysis.result,
+            "vehicle": f"{profile.vehicle_year} {profile.vehicle_model}",
+            "repair_cost": valuation.estimated_repair_cost(mkt),
+            "affordability": afford,
+            "horizon_months": req.horizon_months,
+        }
+    )
+    return analysis.model_copy(
+        update={
+            "profile_id": profile.id,
+            "affordability": afford,
+            "market": mkt,
+            "explanation": explanation.summary,
+            "explanation_details": explanation.details,
+        }
     )
 
 
