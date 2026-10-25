@@ -92,7 +92,7 @@ export default function OptionsStep({ profileId, inputs, onBack, onStartOver, on
           className={`mt-6 inline-flex items-center gap-3 rounded-full bg-[#EB0A1E] px-10 py-4 xl:px-14 text-xl font-bold text-white shadow-[0_10px_28px_rgba(235,10,30,0.3)] hover:bg-[#c8091a] ${ring}`}>
           View your options <span aria-hidden>→</span>
         </button>
-        {mocked && <p className="mt-3 text-[11px] text-neutral-500">Sample results: the scoring service isn&rsquo;t reachable from this site.</p>}
+        {mocked && <p className="mt-3 text-[11px] text-neutral-500">Demo profile: preset results.</p>}
       </div>
     </StepLayout>
   );

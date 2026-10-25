@@ -91,6 +91,8 @@ export type Analysis = {
   explanation_details: string; // longer version for the "more details" drop-down
   // Brief + detailed explanation per option, keyed keep | trade | refinance.
   option_explanations: Record<"keep" | "trade" | "refinance", OptionExplanation>;
+  repair: RepairEstimate | null; // the repair the engine scored (Cost Agent quote)
+  car_value: number | null; // the car value it used (trade-in estimate)
   curve: CurvePoint[]; // legacy chart data; empty now
   crossover_month: number | null;
 };

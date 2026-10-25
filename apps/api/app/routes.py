@@ -99,6 +99,8 @@ def analyze(req: AnalysisRequest):
             "explanation": explanation.summary,
             "explanation_details": explanation.details,
             "option_explanations": explanation.options,
+            "repair": handoff.repair,
+            "car_value": handoff.car_value,
         }
     )
 

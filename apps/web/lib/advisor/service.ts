@@ -107,7 +107,15 @@ export type OptionsInputs = {
   availableCash: number | null; // from the bank step
 };
 
+// Demo profiles always show their preset results (a saved run of the real backend with the
+// demo answers), so the demo tells the same story every time, with or without a backend.
+const PRESET_PROFILES = new Set(["maria", "dev"]);
+
 export async function getOptions(profileId: string, inputs: OptionsInputs): Promise<Served<Analysis>> {
+  if (PRESET_PROFILES.has(profileId) && SNAPSHOT[profileId]) {
+    await new Promise((r) => setTimeout(r, 2600)); // lets the "crunching numbers" screen read naturally
+    return { mocked: true, data: SNAPSHOT[profileId].analysis };
+  }
   const r = await live(async (signal) => {
     const pfo = await api.onboarding({ answers: toPfoAnswers(inputs.situation, inputs.availableCash) }, { signal });
     // Send the user's quote only if it's a complete, live one; otherwise the backend quotes

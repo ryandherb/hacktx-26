@@ -117,6 +117,9 @@ class AnalysisResult(BaseModel):
     explanation_details: str = ""  # longer version with the full numbers (drop-down)
     # Brief + detailed explanation for each option, keyed keep | trade | refinance.
     option_explanations: dict[str, OptionExplanation] = Field(default_factory=dict)
+    # The repair and car value the engine scored (from the Cost Agent quote).
+    repair: "RepairEstimate | None" = None
+    car_value: float | None = None
 
     # Legacy chart data for the old dashboard (app/page.tsx); empty now.
     curve: list[CurvePoint] = Field(default_factory=list)

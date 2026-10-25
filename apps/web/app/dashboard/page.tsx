@@ -9,6 +9,7 @@ import MinimizedPill from "@/components/advisor/MinimizedPill";
 import OptionsStep from "@/components/advisor/OptionsStep";
 import ProblemStep from "@/components/advisor/ProblemStep";
 import OptionsPage from "@/components/options/OptionsPage";
+import PlanPage from "@/components/options/PlanPage";
 import SituationStep from "@/components/advisor/SituationStep";
 import CarImage from "@/components/dashboard/CarImage";
 import IssuesDrawer from "@/components/dashboard/IssuesDrawer";
@@ -75,6 +76,7 @@ export default function Dashboard() {
   const advisorStep = { intro: 0, problem: 1, estimate: 1, situation: 2, options: 3 }[advisor.state.step];
   const split = advisor.state.view === "open";
   const optionsPage = advisor.state.optionsPage && !!advisor.state.options;
+  const planPage = optionsPage && advisor.state.planPage;
 
   return (
     <div className="bg-white text-black">
@@ -117,14 +119,14 @@ export default function Dashboard() {
       </div>
 
       <main className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-6 pb-6 pt-5 md:px-14">
-        {/* Two-slide track: the dashboard (car + advisor panel) and the full-width options page.
-            "View your options" slides the dashboard out to the left; header and footer stay put.
+        {/* Three-slide track: the dashboard (car + advisor panel), the full-width options page, and
+            the plan for the recommended option. Each step slides one page left; header and footer stay put.
             At rest the track has no transform, so the phone advisor sheet (position: fixed) stays relative to the screen. */}
         <div className="relative -mx-6 flex flex-1 overflow-hidden md:-mx-14">
-          <div className="flex w-[200%] shrink-0 transition-transform duration-700 max-md:transition-none ease-[cubic-bezier(0.22,0.8,0.2,1)]"
-            style={{ transform: optionsPage ? "translateX(-50%)" : "none" }}>
-          {/* On phones the hidden slide collapses so its height never stretches the visible one (no slide animation there). */}
-          <div className={`flex w-1/2 flex-col px-6 md:px-14 ${optionsPage ? "max-md:h-0" : ""}`} inert={optionsPage}>
+          <div className="flex w-[300%] shrink-0 transition-transform duration-700 max-md:transition-none ease-[cubic-bezier(0.22,0.8,0.2,1)]"
+            style={{ transform: planPage ? `translateX(-${200 / 3}%)` : optionsPage ? `translateX(-${100 / 3}%)` : "none" }}>
+          {/* On phones hidden slides collapse so their height never stretches the visible one (no slide animation there). */}
+          <div className={`flex w-1/3 flex-col px-6 md:px-14 ${optionsPage ? "max-md:h-0" : ""}`} inert={optionsPage}>
         {/* Opening the advisor slides the car into the left column and reveals the panel on the right. */}
         <div className="grid min-h-0 flex-1 transition-[grid-template-columns] duration-500 ease-out"
           style={{ gridTemplateColumns: split ? "minmax(0,1.08fr) 1px minmax(0,1fr)" : "minmax(0,1fr) 0px minmax(0,0fr)" }}>
@@ -214,9 +216,13 @@ export default function Dashboard() {
           </div>
         </div>
           </div>
-          <div className={`w-1/2 overflow-y-auto px-6 md:px-14 ${optionsPage ? "" : "max-md:h-0"}`} inert={!optionsPage}>
-            <OptionsPage open={optionsPage} vehicleLabel={label} result={advisor.state.options} mocked={advisor.state.optionsMocked}
-              onBack={() => advisor.update({ optionsPage: false })} />
+          <div className={`w-1/3 overflow-y-auto px-6 md:px-14 ${optionsPage && !planPage ? "" : "max-md:h-0"}`} inert={!optionsPage || planPage}>
+            <OptionsPage open={optionsPage && !planPage} vehicleLabel={`${title} ${d.trim}`} car={profile.vehicle_model}
+              result={advisor.state.options} mocked={advisor.state.optionsMocked}
+              onBack={() => advisor.update({ optionsPage: false, planPage: false })} onViewPlan={() => advisor.update({ planPage: true })} />
+          </div>
+          <div className={`w-1/3 overflow-y-auto px-6 md:px-14 ${planPage ? "" : "max-md:h-0"}`} inert={!planPage}>
+            <PlanPage open={planPage} result={advisor.state.options} onBack={() => advisor.update({ planPage: false })} />
           </div>
           </div>
         </div>
