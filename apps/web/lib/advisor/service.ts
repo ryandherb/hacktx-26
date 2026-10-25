@@ -1,70 +1,61 @@
 // Single frontend boundary to the backend for the advisor flow.
-// Real endpoint: Sheikh's POST /pre-quote-survey (issue #1). Types copied from
-// issue_1_pre_quote_survey/pre_quote_contract.ts on origin/sheikh; keep in sync with it.
-// Until that router is mounted in apps/api, calls fall back to a clearly labeled local mock.
+// Live: POST /pre-quote-survey -> /quote -> /onboarding -> /analyze on the main API (lib/api.ts).
+// Offline: the Vercel demo has no backend, so when the API is unreachable each call falls back to
+// lib/demo/offline-snapshot.json, a saved run of the real backend for the demo profiles
+// (regenerate with apps/api/scripts/export_demo_snapshot.py). Fallbacks are flagged `mocked: true`.
+import * as api from "@/lib/api";
+import type {
+  Analysis,
+  CostQuoteResult,
+  ManualQuote,
+  PreQuoteInput,
+  PreQuoteSurveyResult,
+  RepairEstimate,
+} from "@/lib/api";
 import { BANK_FIXTURES, type BankAccount } from "@/lib/demo/bank";
+import snapshotJson from "@/lib/demo/offline-snapshot.json";
+import { toPfoAnswers, type SituationAnswers } from "./situation";
 
-export type PreQuoteInput = {
-  repair_type: string;
-  vehicle_model: string;
-  vehicle_year: number;
-  location: string;
-};
-
-export type PreQuoteSurveyAnswers = { [K in keyof PreQuoteInput]: PreQuoteInput[K] | null };
-
-export type PreQuoteSurveyQuestion = {
-  field: keyof PreQuoteInput;
-  prompt: string;
-  input_type: "text" | "number";
-};
-
-export type PreQuoteSurveyResult = {
-  profile_id: string | null;
-  answers: PreQuoteSurveyAnswers;
-  missing_fields: (keyof PreQuoteInput)[];
-  questions: PreQuoteSurveyQuestion[];
-  complete: boolean;
-  quote_input: PreQuoteInput | null;
-};
+export type { CostQuoteResult, ManualQuote, PreQuoteInput, PreQuoteSurveyResult } from "@/lib/api";
 
 export type Served<T> = { data: T; mocked: boolean };
 
-const SURVEY_API = process.env.NEXT_PUBLIC_SURVEY_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+type Snapshot = Record<string, { survey: PreQuoteSurveyResult; quote: CostQuoteResult; analysis: Analysis }>;
+const SNAPSHOT = snapshotJson as unknown as Snapshot;
+const snapshotFor = (profileId: string) => SNAPSHOT[profileId] ?? SNAPSHOT.dev;
 
 // Only call a backend when one is configured, or when the site itself runs on this machine.
 // A deployed page that calls http://localhost makes Chrome hold the request for a local-network
-// permission prompt, so it never resolves; fall straight back to the labeled mocks instead.
+// permission prompt, so it never resolves; fall straight back to the offline snapshot instead.
 export function backendReachable(): boolean {
-  if (process.env.NEXT_PUBLIC_SURVEY_API_URL || process.env.NEXT_PUBLIC_API_URL) return true;
+  if (process.env.NEXT_PUBLIC_API_URL) return true;
   return typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
 }
+
+// Runs a live call with a timeout. Network failures and timeouts return null (-> offline
+// snapshot); HTTP errors from a reachable backend are real problems and are thrown.
+async function live<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T | null> {
+  if (!backendReachable()) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await call(ctrl.signal);
+  } catch (e) {
+    if (e instanceof Error && /^\d{3} /.test(e.message)) throw new Error(`Service error ${e.message}`);
+    return null; // unreachable or timed out
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ---- Step 1: pre-quote survey (issue #1) -----------------------------------------------
 
 type VehicleFacts = { vehicle_model: string; vehicle_year: number; zip_code: string };
 
 export async function submitProblem(profileId: string, text: string, vehicle: VehicleFacts): Promise<Served<PreQuoteSurveyResult>> {
-  if (!backendReachable()) return mockSurvey(profileId, text, vehicle);
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 5000);
-  try {
-    const res = await fetch(`${SURVEY_API}/pre-quote-survey`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile_id: profileId, answers: { repair_type: text } }),
-      signal: ctrl.signal,
-    });
-    if (res.ok) return { data: (await res.json()) as PreQuoteSurveyResult, mocked: false };
-    if (res.status !== 404) throw new Error(`Survey service error ${res.status}`);
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith("Survey service error")) throw e;
-  } finally {
-    clearTimeout(timer);
-  }
-  return mockSurvey(profileId, text, vehicle);
-}
-
-// MOCK: mirrors the real contract's "complete" response using the profile's own facts.
-function mockSurvey(profileId: string, text: string, vehicle: VehicleFacts): Served<PreQuoteSurveyResult> {
+  const r = await live((signal) => api.preQuoteSurvey({ profile_id: profileId, answers: { repair_type: text } }, { signal }), 5000);
+  if (r) return { data: r, mocked: false };
+  // Offline: same shape the survey returns for a complete profile, with the text the user typed.
   const quote_input = { repair_type: text, vehicle_model: vehicle.vehicle_model, vehicle_year: vehicle.vehicle_year, location: vehicle.zip_code };
   return {
     mocked: true,
@@ -72,154 +63,60 @@ function mockSurvey(profileId: string, text: string, vehicle: VehicleFacts): Ser
   };
 }
 
-// ---- Repair quote (issue #2 Cost Agent: POST /quote) -----------------------------------
-// Types mirror issue_2_cost_agent/web/lib/cost_api.ts on main; fold into lib/api.ts when the
-// team unpacks the Cost Agent. Falls back to a labeled mock if the service is unreachable.
-
-export type ManualQuote = { amount: number; shop?: string | null };
-
-export type RepairClassification = {
-  category: string | null;
-  label: string | null;
-  kind: "repair" | "symptom" | "multiple" | "unknown";
-  quotable: boolean;
-  confidence: number;
-  method: "llm" | "keyword";
-  reason: string;
-};
-
-export type RepairEstimate = {
-  source: "table" | "manual";
-  category: string | null;
-  label: string;
-  repair_cost_low: number;
-  repair_cost_high: number;
-  repair_cost_estimate: number;
-  region: string | null;
-  shop: string | null;
-};
-
-export type VehicleValue = {
-  vehicle_age_years: number;
-  mileage: number;
-  private_sale_low: number;
-  private_sale_high: number;
-  private_sale_estimate: number;
-  trade_in_low: number;
-  trade_in_high: number;
-  trade_in_estimate: number;
-};
-
-export type CostQuoteResult = {
-  profile_id: string | null;
-  quote_input: PreQuoteInput;
-  classification: RepairClassification;
-  needs_manual: boolean;
-  questions: { field: "manual_quote" | "mileage"; prompt: string; input_type: "number" }[];
-  repair: RepairEstimate | null;
-  vehicle: VehicleValue | null;
-  nearby_shops: { name: string; source: "fixture" }[];
-  complete: boolean;
-  disclaimer: string;
-};
+// ---- Step 2: repair quote (issue #2 Cost Agent) ------------------------------------------
 
 export async function getQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): Promise<Served<CostQuoteResult>> {
-  if (!backendReachable()) return { mocked: true, data: mockQuote(profileId, quoteInput, manualQuote) };
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const res = await fetch(`${SURVEY_API}/quote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote }),
-      signal: ctrl.signal,
-    });
-    if (res.ok) return { data: (await res.json()) as CostQuoteResult, mocked: false };
-    if (res.status !== 404) throw new Error(`Repair quote service error ${res.status}`);
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith("Repair quote service error")) throw e;
-  } finally {
-    clearTimeout(timer);
-  }
-  return { mocked: true, data: mockQuote(profileId, quoteInput, manualQuote) };
+  const r = await live((signal) => api.quote({ profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote }, { signal }), 8000);
+  if (r) return { data: r, mocked: false };
+  return { mocked: true, data: offlineQuote(profileId, quoteInput, manualQuote) };
 }
 
-// MOCK: copies of the real Cost Agent's output for the demo profiles (captured from POST /quote).
-const QUOTE_DISCLAIMER = "Estimates based on synthetic data, not financial advice. Get a real shop quote before deciding.";
-const MOCK_QUOTES: Record<string, Pick<CostQuoteResult, "classification" | "repair" | "vehicle" | "nearby_shops">> = {
-  maria: {
-    classification: { category: "transmission", label: "Transmission rebuild or replacement", kind: "repair", quotable: true, confidence: 0.9, method: "keyword", reason: "Matched to Transmission rebuild or replacement." },
-    repair: { source: "table", category: "transmission", label: "Transmission rebuild or replacement", repair_cost_low: 2750, repair_cost_high: 4950, repair_cost_estimate: 4950, region: "TX", shop: null },
-    vehicle: { vehicle_age_years: 14, mileage: 148000, private_sale_low: 4275, private_sale_high: 5225, private_sale_estimate: 4750, trade_in_low: 3420, trade_in_high: 4180, trade_in_estimate: 3800 },
-    nearby_shops: [{ name: "Austin Transmission Co.", source: "fixture" }, { name: "Central TX Auto Care", source: "fixture" }],
-  },
-  dev: {
-    classification: { category: "noise", label: "Unusual noise", kind: "symptom", quotable: false, confidence: 0.9, method: "keyword", reason: "This describes a symptom that could come from several different problems. A shop diagnosis will give you a real quote." },
-    repair: null,
-    vehicle: { vehicle_age_years: 16, mileage: 171000, private_sale_low: 2565, private_sale_high: 3135, private_sale_estimate: 2850, trade_in_low: 2025, trade_in_high: 2475, trade_in_estimate: 2250 },
-    nearby_shops: [{ name: "South Austin Auto A/C", source: "fixture" }, { name: "Quick Fix Garage", source: "fixture" }],
-  },
-};
-
-function mockQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): CostQuoteResult {
-  const base = MOCK_QUOTES[profileId] ?? MOCK_QUOTES.dev;
+// Offline: the saved Cost Agent result for this profile. A shop quote replaces the table
+// estimate the same way the backend does (source "manual").
+function offlineQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): CostQuoteResult {
+  const base = snapshotFor(profileId).quote;
   const c = base.classification;
   const repair: RepairEstimate | null = manualQuote
-    ? { source: "manual", category: c.category, label: c.label ?? "Shop quote", repair_cost_low: manualQuote.amount, repair_cost_high: manualQuote.amount, repair_cost_estimate: manualQuote.amount, region: null, shop: manualQuote.shop ?? null }
+    ? { source: "manual", category: c.category, label: c.label ?? "Shop quote", repair_cost_low: manualQuote.amount, repair_cost_high: manualQuote.amount, repair_cost_estimate: manualQuote.amount, model_multiplier: null, age_multiplier: null, region_multiplier: null, region: null, shop: manualQuote.shop ?? null }
     : base.repair;
   return {
+    ...base,
     profile_id: profileId,
     quote_input: quoteInput,
-    classification: c,
     needs_manual: !repair,
-    questions: repair ? [] : [{ field: "manual_quote", prompt: `${c.reason} If you already have a quote, enter the total amount.`, input_type: "number" }],
+    questions: repair ? base.questions.filter((q) => q.field !== "manual_quote") : base.questions,
     repair,
-    vehicle: base.vehicle,
-    nearby_shops: base.nearby_shops,
     complete: !!repair && !!base.vehicle,
-    disclaimer: QUOTE_DISCLAIMER,
   };
 }
 
-// ---- Results (issues #3 scoring + #4 explanation) -------------------------------------
-// PROPOSED response shape; Ryan (#3) and Eni (#4) have not published contracts yet.
-// Everything below is an ILLUSTRATIVE MOCK, not real financial math.
+// ---- Step 3: results (PFO Agent -> KRT engine -> Explanation Agent) ----------------------
 
-export type OptionId = "keep_repair" | "trade_in" | "private_sale";
+export type OptionId = Analysis["recommendation"];
 
 export const OPTION_LABELS: Record<OptionId, [string, string]> = {
-  keep_repair: ["Keep & Repair", "Fix it and keep driving"],
-  trade_in: ["Trade In & Upgrade", "Put this car toward a newer Toyota"],
-  private_sale: ["Private Sale & Refinance", "Sell it yourself and finance a replacement"],
+  keep: ["Keep & Repair", "Fix it and keep driving"],
+  trade: ["Trade In & Upgrade", "Put this car toward a newer Toyota"],
+  refinance: ["Keep & Refinance", "Fix it and lower your loan payment"],
 };
 
-export type OptionsResult = {
-  scores: Record<OptionId, number>; // percentages, sum to 100
-  explanation: string;
-  recommended_vehicle: { name: string; kind: string; price: number; monthly_estimate: number } | null;
-  what_would_change: string[];
+export type OptionsInputs = {
+  quote: CostQuoteResult | null;
+  quoteMocked: boolean;
+  situation: SituationAnswers;
+  availableCash: number | null; // from the bank step
 };
 
-const MOCK_RESULTS: Record<string, OptionsResult> = {
-  maria: {
-    scores: { keep_repair: 24, trade_in: 61, private_sale: 15 },
-    explanation:
-      "A transmission repair on a 148,000-mile Camry could cost close to what the car is worth. With a confirmed new job, a healthy down payment, and strong credit, trading in for a newer Toyota keeps your monthly costs predictable without draining savings.",
-    recommended_vehicle: { name: "2023 Toyota Camry LE (Certified Used)", kind: "Certified used", price: 24500, monthly_estimate: 375 },
-    what_would_change: ["If the job offer fell through, repairing becomes the safer choice.", "A repair quote under $2,000 would favor keeping the car."],
-  },
-  dev: {
-    scores: { keep_repair: 68, trade_in: 12, private_sale: 20 },
-    explanation:
-      "An A/C repair is a contained cost, and an unpaid internship means a new car payment would stretch your budget during the months you'll have the least income. Fixing the Corolla keeps you on the road while you graduate, and you can revisit replacing it once your next job starts.",
-    recommended_vehicle: { name: "2021 Toyota Corolla LE (Used)", kind: "Used, for later", price: 17900, monthly_estimate: 310 },
-    what_would_change: ["A confirmed full-time job offer would make trading in more realistic.", "If the repair turns out to include the compressor and condenser, private sale gains ground."],
-  },
-};
-
-export async function getOptions(profileId: string): Promise<Served<OptionsResult>> {
-  await new Promise((r) => setTimeout(r, 2600)); // lets the "crunching numbers" screen read naturally
-  return { mocked: true, data: MOCK_RESULTS[profileId] ?? MOCK_RESULTS.dev };
+export async function getOptions(profileId: string, inputs: OptionsInputs): Promise<Served<Analysis>> {
+  const r = await live(async (signal) => {
+    const pfo = await api.onboarding({ answers: toPfoAnswers(inputs.situation, inputs.availableCash) }, { signal });
+    // Send the user's quote only if it's a complete, live one; otherwise the backend quotes
+    // the profile's open issue itself.
+    const quote = inputs.quote?.complete && !inputs.quoteMocked ? inputs.quote : null;
+    return api.analyze(profileId, { quote, pfo_factors: pfo.factors }, { signal });
+  }, 10000);
+  if (r) return { data: r, mocked: false };
+  return { mocked: true, data: snapshotFor(profileId).analysis };
 }
 
 // ---- Bank connection (Capital One Nessie) ---------------------------------------------

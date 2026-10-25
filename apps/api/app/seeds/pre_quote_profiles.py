@@ -1,4 +1,4 @@
-"""Local synthetic profiles; replace this dependency with the shared profile source at integration."""
+"""Raw profile records for the pre-quote survey and Cost Agent (same file as seeds/loader.py)."""
 
 import json
 from pathlib import Path
@@ -13,5 +13,5 @@ def load_profile_records() -> list[dict]:
 
 
 def survey_profile_records() -> list[dict]:
-    """FastAPI dependency to override with the team's profile adapter after merging."""
+    """FastAPI dependency; tests override it with their own records."""
     return load_profile_records()

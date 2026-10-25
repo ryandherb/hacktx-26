@@ -91,12 +91,185 @@ export type Analysis = {
   crossover_month: number | null;
 };
 
+// ---- Pre-quote survey (issue #1): POST /pre-quote-survey ----
+
+export type PreQuoteInput = {
+  repair_type: string;
+  vehicle_model: string;
+  vehicle_year: number;
+  location: string;
+};
+
+export type PreQuoteSurveyAnswers = {
+  [K in keyof PreQuoteInput]: PreQuoteInput[K] | null;
+};
+
+export type PreQuoteSurveyRequest = {
+  profile_id?: string | null;
+  answers?: Partial<PreQuoteSurveyAnswers>;
+};
+
+export type PreQuoteSurveyQuestion = {
+  field: keyof PreQuoteInput;
+  prompt: string;
+  input_type: "text" | "number";
+};
+
+export type PreQuoteSurveyResult = {
+  profile_id: string | null;
+  answers: PreQuoteSurveyAnswers;
+  missing_fields: (keyof PreQuoteInput)[];
+  questions: PreQuoteSurveyQuestion[];
+  complete: boolean;
+  quote_input: PreQuoteInput | null;
+};
+
+// ---- Cost Agent + PFO Agent (issue #2): POST /quote, POST /onboarding ----
+
+export type ManualQuote = { amount: number; shop?: string | null };
+
+export type CostQuoteRequest = {
+  profile_id?: string | null;
+  quote_input: PreQuoteInput;
+  mileage?: number | null;
+  manual_quote?: ManualQuote | null;
+};
+
+export type RepairClassification = {
+  category: string | null;
+  label: string | null;
+  kind: "repair" | "symptom" | "multiple" | "unknown";
+  quotable: boolean;
+  confidence: number;
+  method: "llm" | "keyword";
+  reason: string;
+};
+
+export type RepairEstimate = {
+  source: "table" | "manual";
+  category: string | null;
+  label: string;
+  repair_cost_low: number;
+  repair_cost_high: number;
+  repair_cost_estimate: number;
+  model_multiplier: number | null;
+  age_multiplier: number | null;
+  region_multiplier: number | null;
+  region: string | null;
+  shop: string | null;
+};
+
+export type VehicleValue = {
+  model_recognized: boolean;
+  vehicle_age_years: number;
+  mileage: number;
+  mileage_source: "profile" | "user";
+  private_sale_low: number;
+  private_sale_high: number;
+  private_sale_estimate: number;
+  trade_in_low: number;
+  trade_in_high: number;
+  trade_in_estimate: number;
+};
+
+export type RepairShop = { name: string; source: "fixture" };
+
+export type CostQuestion = {
+  field: "manual_quote" | "mileage";
+  prompt: string;
+  input_type: "number";
+};
+
+export type CostQuoteResult = {
+  profile_id: string | null;
+  quote_input: PreQuoteInput;
+  classification: RepairClassification;
+  needs_manual: boolean;
+  questions: CostQuestion[];
+  repair: RepairEstimate | null;
+  vehicle: VehicleValue | null;
+  nearby_shops: RepairShop[];
+  complete: boolean;
+  disclaimer: string;
+};
+
+export type CreditBand = "excellent" | "good" | "fair" | "poor" | "unknown";
+export type IncomeStability = "growing" | "steady" | "at_risk" | "unsure";
+export type DebtLoad = "none" | "light" | "heavy";
+export type Level = "low" | "medium" | "high";
+export type PfoField =
+  | "down_payment"
+  | "credit_band"
+  | "other_debt_load"
+  | "upcoming_major_expense"
+  | "income_stability"
+  | "car_usage";
+
+// What the survey asks. For the yes/no question send true/false (options carry "yes"/"no").
+export type PfoAnswers = {
+  down_payment: number | null;
+  credit_band: CreditBand | null;
+  other_debt_load: DebtLoad | null;
+  upcoming_major_expense: boolean | null;
+  income_stability: IncomeStability | null;
+  car_usage: Level | null;
+};
+
+export type OnboardingRequest = {
+  answers?: Partial<PfoAnswers>;
+  reply?: { field: PfoField; text: string } | null;
+};
+
+export type PfoQuestion = {
+  field: PfoField;
+  prompt: string;
+  input_type: "number" | "choice";
+  unit: "dollars" | null;
+  options: { value: string; label: string }[];
+};
+
+export type OnboardingResult = {
+  answers: PfoAnswers;
+  question: PfoQuestion | null;
+  retry: boolean;
+  message: string | null;
+  answered: number;
+  total: number;
+  accepts_free_text: boolean;
+  complete: boolean;
+  factors: PFOFactors | null;
+};
+
+// Built by cost_agent.build_handoff(); repair_cost, car_value and pfo_factors are krt.score() inputs.
+export type CostAgentHandoff = {
+  profile_id: string | null;
+  quote_input: PreQuoteInput;
+  repair: RepairEstimate;
+  vehicle: VehicleValue;
+  pfo_factors: PFOFactors;
+  repair_cost: number;
+  car_value: number;
+};
+
+// ---- POST /analyze ----
+
+export type AnalysisRequest = {
+  profile_id: string;
+  horizon_months?: number;
+  replacement_price?: number | null;
+  down_payment?: number | null; // used only when pfo_factors is not sent
+  quote?: CostQuoteResult | null; // complete POST /quote result; omitted -> backend quotes the profile's open issue
+  pfo_factors?: PFOFactors | null; // POST /onboarding factors; omitted -> defaults
+};
+
 export type CarFund = {
   account_id: string;
   monthly_amount: number;
   target_amount: number;
   simulated: boolean;
 };
+
+type Init = { signal?: AbortSignal };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
@@ -107,20 +280,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+const post = <T>(path: string, body: unknown, init?: Init) =>
+  request<T>(path, { method: "POST", body: JSON.stringify(body), ...init });
+
 export const getProfiles = () => request<Profile[]>("/profiles");
 
-export const analyze = (profile_id: string, horizon_months = 36) =>
-  request<Analysis>("/analyze", {
-    method: "POST",
-    body: JSON.stringify({ profile_id, horizon_months }),
-  });
+export const preQuoteSurvey = (body: PreQuoteSurveyRequest, init?: Init) =>
+  post<PreQuoteSurveyResult>("/pre-quote-survey", body, init);
+
+export const quote = (body: CostQuoteRequest, init?: Init) =>
+  post<CostQuoteResult>("/quote", body, init);
+
+export const onboarding = (body: OnboardingRequest, init?: Init) =>
+  post<OnboardingResult>("/onboarding", body, init);
+
+export const analyze = (
+  profile_id: string,
+  extra: Omit<AnalysisRequest, "profile_id"> = {},
+  init?: Init,
+) => post<Analysis>("/analyze", { profile_id, horizon_months: 36, ...extra }, init);
 
 export const createCarFund = (
   profile_id: string,
   monthly_amount: number,
   target_amount: number,
-) =>
-  request<CarFund>("/car-fund", {
-    method: "POST",
-    body: JSON.stringify({ profile_id, monthly_amount, target_amount }),
-  });
+) => post<CarFund>("/car-fund", { profile_id, monthly_amount, target_amount });

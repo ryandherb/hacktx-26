@@ -4,14 +4,16 @@ handoff to issue #3's krt.score()."""
 import json
 from pathlib import Path
 
+from .pre_quote_service import prepare_survey
 from .repair_classifier import classify_repair
 from .engine.repair_costs import estimate_from_manual, estimate_from_table
-from .models.cost_schemas import (
+from .models.schemas import (
     CostAgentHandoff,
     CostQuestion,
     CostQuoteRequest,
     CostQuoteResult,
     PFOFactors,
+    PreQuoteSurveyRequest,
     RepairShop,
 )
 from .engine.cost_tables import DISCLAIMER
@@ -95,3 +97,17 @@ def build_handoff(quote: CostQuoteResult, factors: PFOFactors) -> CostAgentHando
         repair_cost=quote.repair.repair_cost_estimate,
         car_value=quote.vehicle.trade_in_estimate,
     )
+
+
+def quote_for_profile(profile: dict, as_of_year: int) -> CostQuoteResult:
+    """Run the survey + Cost Agent on a stored profile's own open_issue, with no user input.
+
+    /analyze uses this when the client doesn't send a quote, so it still prices the repair
+    with the Cost Agent. The result may be incomplete (e.g. a symptom that needs a manual quote).
+    """
+    survey = prepare_survey(PreQuoteSurveyRequest(profile_id=profile.get("id")), profile)
+    if survey.quote_input is None:
+        missing = ", ".join(survey.missing_fields)
+        raise ValueError(f"Profile is missing {missing}; complete POST /pre-quote-survey first")
+    req = CostQuoteRequest(profile_id=profile.get("id"), quote_input=survey.quote_input)
+    return build_quote(req, profile, as_of_year=as_of_year)

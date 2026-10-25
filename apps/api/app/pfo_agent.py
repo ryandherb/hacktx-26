@@ -11,10 +11,9 @@ import re
 
 from pydantic import ValidationError
 
-from . import cost_config
-from .clients import muse
+from .clients import llm, muse
 from .engine.cost_tables import CREDIT_BANDS, INCOME_STABILITY, PFO_DEFAULTS, normalize_text
-from .models.cost_schemas import (
+from .models.schemas import (
     OnboardingRequest,
     OnboardingResult,
     PFOFactors,
@@ -205,7 +204,7 @@ def run_onboarding(req: OnboardingRequest) -> OnboardingResult:
         message=message,
         answered=len(QUESTIONS) - len(missing),
         total=len(QUESTIONS),
-        accepts_free_text=cost_config.get_cost_settings().llm_enabled,
+        accepts_free_text=llm.llm_configured(),
         complete=not missing,
         factors=to_factors(answers) if not missing else None,
     )

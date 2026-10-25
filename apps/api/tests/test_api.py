@@ -38,3 +38,56 @@ def test_analyze_profiles_get_different_explanations():
 
 def test_unknown_profile_404():
     assert client.post("/analyze", json={"profile_id": "nope"}).status_code == 404
+
+
+MARIA_QUOTE_INPUT = {"repair_type": "transmission slipping", "vehicle_model": "Camry",
+                     "vehicle_year": 2012, "location": "78704"}
+PFO_ANSWERS = {"down_payment": 6000, "credit_band": "good", "other_debt_load": "none",
+               "upcoming_major_expense": False, "income_stability": "growing", "car_usage": "high"}
+
+
+def test_full_flow_survey_quote_onboarding_analyze():
+    survey = client.post("/pre-quote-survey", json={"profile_id": "maria"}).json()
+    assert survey["complete"]
+    quote = client.post("/quote", json={"profile_id": "maria", "quote_input": survey["quote_input"]}).json()
+    assert quote["complete"] and quote["repair"]["source"] == "table"
+    pfo = client.post("/onboarding", json={"answers": PFO_ANSWERS}).json()
+    assert pfo["complete"]
+
+    r = client.post("/analyze", json={"profile_id": "maria", "quote": quote, "pfo_factors": pfo["factors"]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["apr"] == pfo["factors"]["apr"]
+    assert body["down_payment"] == 6000
+    # The explanation restates the Cost Agent's repair estimate, not market.json's quotes.
+    assert f"${quote['repair']['repair_cost_estimate']:,.0f}" in body["explanation_details"]
+
+
+def test_analyze_uses_manual_quote():
+    quote = client.post("/quote", json={"profile_id": "maria", "quote_input": MARIA_QUOTE_INPUT,
+                                        "manual_quote": {"amount": 1234}}).json()
+    body = client.post("/analyze", json={"profile_id": "maria", "quote": quote}).json()
+    assert "$1,234" in body["explanation_details"]
+
+
+def test_analyze_without_quote_prices_open_issue_with_cost_agent():
+    quote = client.post("/quote", json={"profile_id": "dev", "quote_input": {
+        "repair_type": "A/C compressor failing", "vehicle_model": "Corolla",
+        "vehicle_year": 2010, "location": "78745"}}).json()
+    with_quote = client.post("/analyze", json={"profile_id": "dev", "quote": quote}).json()
+    without = client.post("/analyze", json={"profile_id": "dev"}).json()
+    assert with_quote["result"] == without["result"]
+
+
+def test_analyze_rejects_incomplete_quote():
+    quote = client.post("/quote", json={"profile_id": "maria", "quote_input": {
+        **MARIA_QUOTE_INPUT, "repair_type": "making a weird noise"}}).json()
+    assert quote["needs_manual"]
+    r = client.post("/analyze", json={"profile_id": "maria", "quote": quote})
+    assert r.status_code == 422
+
+
+def test_analyze_rejects_quote_for_another_profile():
+    quote = client.post("/quote", json={"profile_id": "maria", "quote_input": MARIA_QUOTE_INPUT}).json()
+    r = client.post("/analyze", json={"profile_id": "dev", "quote": quote})
+    assert r.status_code == 422

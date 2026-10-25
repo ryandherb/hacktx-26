@@ -1,6 +1,3 @@
-
-
-from app.engine import valuation
 from app.engine import krt
 from app.models.schemas import (
     AffordabilityResult,
@@ -19,18 +16,23 @@ def run(
     afford: AffordabilityResult,
     req: AnalysisRequest,
     snapshot: dict,
-    pfo_factors: PFOFactors
+    *,
+    repair_cost: float,
+    car_value: float,
+    pfo_factors: PFOFactors,
 ) -> AnalysisResult:
+    """Score keep / refinance / trade. repair_cost, car_value, and pfo_factors come from
+    the Cost Agent handoff: `run(..., **build_handoff(quote, factors).krt_arguments())`."""
     krt_result: KRTResult = krt.score(
         profile,
-        valuation.current_value(market),
+        car_value,
         afford,
         market,
-        valuation.estimated_repair_cost(market),
+        repair_cost,
         snapshot,
-        pfo_factors
-    ) 
-    
+        pfo_factors,
+    )
+
     recommendation =  set_recommendation(krt_result)
     suggested_models = krt_result.suggested_models if recommendation == "trade" else None
     

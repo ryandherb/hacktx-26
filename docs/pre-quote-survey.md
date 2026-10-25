@@ -1,5 +1,9 @@
 # Issue #1: Pre-Quote Survey Backend
 
+> **Integrated.** This feature now lives in the main backend: code under `apps/api/app/`, tests in
+> `apps/api/tests/`, types in `apps/web/lib/api.ts`, LLM settings in `apps/api/.env` (shared client:
+> `app/clients/llm.py`). Folder layouts, standalone servers, and "unpack" steps below are historical.
+
 Implements [GitHub issue #1](https://github.com/ryandherb/hacktx-26/issues/1).
 All changes for this feature live in `issue_1_pre_quote_survey/`. Shared API files,
 frontend files, root documentation, and dependency manifests are unchanged so this
