@@ -405,7 +405,7 @@ def _summary_template(facts: dict) -> str:
         parts.append(f"The repair would cost about {pct:g}% of what your car is worth.")
     elif rec == "refinance" and _num(krt.get("refi_payment")):
         parts.append(f"Your new loan payment would be about {_money(krt['refi_payment'])} a month.")
-    elif rec == "keep" and _num(pct) and pct >= 100:
+    elif rec == "keep" and _num(pct) and pct >= 50:  # a big repair: don't say "it pays off"
         parts.append(
             f"The repair costs about {pct:g}% of what your car is worth, but keeping it is "
             "still cheaper each month than trading in."
