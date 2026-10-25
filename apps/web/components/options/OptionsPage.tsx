@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Analysis } from "@/lib/api";
 import { keyNumbers, optionCards, planButton, verdict, type OptionCard } from "@/lib/advisor/results";
-import SideDrawer from "@/components/dashboard/SideDrawer";
 
 const ring = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#EB0A1E]";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
@@ -20,7 +19,7 @@ type Props = {
 
 // "Your options" page (POST /analyze): the recommendation with the Explanation Agent's summary,
 // each option with its brief and a "Why?" drop-down for the detailed explanation, the numbers
-// behind the decision, and the full explanation in a side drawer. The recommended option's
+// behind the decision, and a drop-down with the full explanation. The recommended option's
 // button slides on to its plan.
 export default function OptionsPage({ open, vehicleLabel, car, result, mocked, onBack, onViewPlan }: Props) {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -50,19 +49,24 @@ export default function OptionsPage({ open, vehicleLabel, car, result, mocked, o
         {verdict(result.recommendation, car)}
       </h1>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-3 md:flex-nowrap">
+      <div className={`mt-2 flex flex-wrap gap-x-6 gap-y-3 md:flex-nowrap ${explanation ? "items-start" : "items-center"}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/advisor/guide-placeholder.png" alt="" className="h-[60px] w-[60px] shrink-0 object-contain mix-blend-multiply" />
         <div className="min-w-0 flex-1 basis-[240px]">
           <p className="text-[17px] font-bold">Your AI guide</p>
-          <p className="max-w-[720px] text-[15px] leading-snug text-neutral-700">
-            {result.explanation}{" "}
-            {result.explanation_details && (
-              <button onClick={() => setExplanation(true)} className={`whitespace-nowrap font-semibold text-black underline underline-offset-4 ${ring}`}>
-                Read the full explanation
+          <p className="max-w-[720px] text-[15px] leading-snug text-neutral-700">{result.explanation}</p>
+          {result.explanation_details && (
+            <>
+              <button onClick={() => setExplanation((v) => !v)} aria-expanded={explanation} aria-controls="full-explanation"
+                className={`mt-1 inline-flex items-center gap-1.5 text-[15px] font-semibold text-black underline underline-offset-4 ${ring}`}>
+                {explanation ? "Hide the full explanation" : "Read the full explanation"}
+                <span aria-hidden className={`inline-block no-underline transition-transform ${explanation ? "rotate-180" : ""}`}>⌄</span>
               </button>
-            )}
-          </p>
+              <p id="full-explanation" hidden={!explanation} className="mt-1.5 max-w-[720px] text-[14px] leading-relaxed text-neutral-700">
+                {result.explanation_details}
+              </p>
+            </>
+          )}
         </div>
         <button onClick={onViewPlan}
           className={`inline-flex shrink-0 items-center justify-center gap-3 rounded-full bg-[#EB0A1E] px-9 py-3.5 text-[17px] font-bold text-white shadow-[0_10px_28px_rgba(235,10,30,0.28)] hover:bg-[#c8091a] max-md:w-full ${ring}`}>
@@ -90,14 +94,6 @@ export default function OptionsPage({ open, vehicleLabel, car, result, mocked, o
         Estimates, not financial advice.{mocked && " Demo profile: preset results."}
       </p>
 
-      <SideDrawer open={explanation} onClose={() => setExplanation(false)} title="The full explanation" closeLabel="Close explanation">
-        <div className="mt-4 flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/advisor/guide-placeholder.png" alt="" className="h-10 w-10 object-contain mix-blend-multiply" />
-          <p className="text-sm font-bold">From your AI guide</p>
-        </div>
-        <p className="mt-3 text-[15px] leading-relaxed text-neutral-800">{result.explanation_details}</p>
-      </SideDrawer>
     </div>
   );
 }
