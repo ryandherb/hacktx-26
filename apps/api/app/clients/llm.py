@@ -6,8 +6,10 @@ OpenAI-compatible chat completions API (Meta Muse, OpenAI, Groq, OpenRouter, Gem
 endpoint, ...). Configure it with LLM_PROVIDER, LLM_API_KEY and optionally LLM_MODEL,
 LLM_BASE_URL, LLM_REASONING_EFFORT and LLM_MAX_TOKENS.
 
-`explain` falls back to a deterministic template when USE_FIXTURES=true, LLM_PROVIDER=none,
-LLM_API_KEY is empty, the request fails, or the reply contains a number it wasn't given.
+`explain` uses the LLM whenever a provider and key are set (USE_FIXTURES only controls demo
+data, not the LLM). It falls back to a deterministic template when LLM_PROVIDER=none,
+LLM_API_KEY is empty, the request fails or times out, the reply isn't usable JSON, or the reply
+contains a number it wasn't given. Each of the two texts (summary, details) falls back on its own.
 """
 
 import json
@@ -506,8 +508,16 @@ def _invented_numbers(text: str, facts: dict) -> list[str]:
     return bad
 
 
-def _llm_enabled_for_explain() -> bool:
-    return llm_configured() and not get_settings().use_fixtures
+def _reply_object(reply: str) -> dict:
+    """The JSON object in an LLM reply, tolerating code fences or stray prose around it."""
+    text = _strip_code_fence(reply)
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end <= start:
+        raise ValueError("no JSON object in reply")
+    data = json.loads(text[start : end + 1])
+    if not isinstance(data, dict):
+        raise ValueError("reply is not a JSON object")
+    return data
 
 
 def _checked(text: Any, facts: dict, fallback: str, disclaimer: str, label: str) -> str:
@@ -536,7 +546,7 @@ def explain(context: dict) -> Explanation:
     """
     facts = _build_facts(context)
     fallback = _template(facts)
-    if not _llm_enabled_for_explain():
+    if not llm_configured():
         return fallback
 
     try:
@@ -545,9 +555,7 @@ def explain(context: dict) -> Explanation:
             system=EXPLAIN_SYSTEM_PROMPT,
             max_tokens=max(get_settings().llm_max_tokens, 1500),
         )
-        data = json.loads(_strip_code_fence(reply))
-        if not isinstance(data, dict):
-            raise ValueError("reply is not a JSON object")
+        data = _reply_object(reply)
     except (LLMError, ValueError) as e:
         log.warning("explain: falling back to template (%s)", e)
         return fallback

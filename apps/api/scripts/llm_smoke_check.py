@@ -83,13 +83,13 @@ def main() -> int:
         failures += not ok
         print(f"[{'ok' if ok else 'FAIL'}] {field}: {text!r} -> {got!r} (expected {expected!r})")
 
-    print("\n-- Explanation Agent (with USE_FIXTURES=false) --")
-    if s.use_fixtures:
-        print("skipped: USE_FIXTURES=true always uses the template explanation")
-    else:
-        e = llm.explain({"recommendation": "keep", "vehicle": "2012 Camry", "repair_cost": 4950,
-                         "krt": {"keepResult": 226.0, "tradeResult": 377.0, "refinanceResult": 226.0}})
-        print(f"summary: {e.summary}\ndetails: {e.details}")
+    print("\n-- Explanation Agent --")
+    facts = {"recommendation": "keep", "vehicle": "2012 Camry", "repair_cost": 4950,
+             "krt": {"keepResult": 226.0, "tradeResult": 377.0, "refinanceResult": 226.0}}
+    e = llm.explain(facts)
+    template = llm._template(llm._build_facts(facts))
+    print(f"summary ({'TEMPLATE fallback' if e.summary == template.summary else 'llm'}): {e.summary}")
+    print(f"details ({'TEMPLATE fallback' if e.details == template.details else 'llm'}): {e.details}")
 
     print(f"\n{failures} failure(s)")
     return 1 if failures else 0

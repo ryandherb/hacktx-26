@@ -34,6 +34,8 @@ export function backendReachable(): boolean {
 
 // Runs a live call with a timeout. Network failures and timeouts return null (-> offline
 // snapshot); HTTP errors from a reachable backend are real problems and are thrown.
+// Timeouts are generous: Render's free tier can take ~30s+ to wake, and /quote and /analyze
+// call Muse (classification; the written explanation).
 async function live<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T | null> {
   if (!backendReachable()) return null;
   const ctrl = new AbortController();
@@ -53,7 +55,7 @@ async function live<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): P
 type VehicleFacts = { vehicle_model: string; vehicle_year: number; zip_code: string };
 
 export async function submitProblem(profileId: string, text: string, vehicle: VehicleFacts): Promise<Served<PreQuoteSurveyResult>> {
-  const r = await live((signal) => api.preQuoteSurvey({ profile_id: profileId, answers: { repair_type: text } }, { signal }), 5000);
+  const r = await live((signal) => api.preQuoteSurvey({ profile_id: profileId, answers: { repair_type: text } }, { signal }), 20000);
   if (r) return { data: r, mocked: false };
   // Offline: same shape the survey returns for a complete profile, with the text the user typed.
   const quote_input = { repair_type: text, vehicle_model: vehicle.vehicle_model, vehicle_year: vehicle.vehicle_year, location: vehicle.zip_code };
@@ -66,7 +68,7 @@ export async function submitProblem(profileId: string, text: string, vehicle: Ve
 // ---- Step 2: repair quote (issue #2 Cost Agent) ------------------------------------------
 
 export async function getQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): Promise<Served<CostQuoteResult>> {
-  const r = await live((signal) => api.quote({ profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote }, { signal }), 8000);
+  const r = await live((signal) => api.quote({ profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote }, { signal }), 30000);
   if (r) return { data: r, mocked: false };
   return { mocked: true, data: offlineQuote(profileId, quoteInput, manualQuote) };
 }
@@ -114,7 +116,7 @@ export async function getOptions(profileId: string, inputs: OptionsInputs): Prom
     // the profile's open issue itself.
     const quote = inputs.quote?.complete && !inputs.quoteMocked ? inputs.quote : null;
     return api.analyze(profileId, { quote, pfo_factors: pfo.factors }, { signal });
-  }, 10000);
+  }, 45000);
   if (r) return { data: r, mocked: false };
   return { mocked: true, data: snapshotFor(profileId).analysis };
 }

@@ -88,9 +88,9 @@ def fail_if_called(*a, **k):
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"use_fixtures": True},
         {"llm_provider": "none"},
         {"llm_api_key": ""},
+        {"llm_api_key": "   "},
     ],
 )
 def test_template_used_when_llm_disabled(monkeypatch, overrides):
@@ -101,7 +101,7 @@ def test_template_used_when_llm_disabled(monkeypatch, overrides):
 
 @pytest.mark.parametrize("rec", ["keep", "trade", "refinance"])
 def test_template_restates_given_numbers_only(monkeypatch, rec):
-    use_settings(monkeypatch, use_fixtures=True)
+    use_settings(monkeypatch, llm_provider="none")
     c = ctx(rec)
     e = llm.explain(c)
     facts = llm._build_facts(c)
@@ -114,14 +114,14 @@ def test_template_restates_given_numbers_only(monkeypatch, rec):
 
 
 def test_summary_is_short(monkeypatch):
-    use_settings(monkeypatch, use_fixtures=True)
+    use_settings(monkeypatch, llm_provider="none")
     for rec in ("keep", "trade", "refinance"):
         summary = llm.explain(ctx(rec)).summary
         assert summary.count(". ") <= 2  # at most 2 sentences + disclaimer
 
 
 def test_keep_summary_and_details(monkeypatch):
-    use_settings(monkeypatch, use_fixtures=True)
+    use_settings(monkeypatch, llm_provider="none")
     e = llm.explain(ctx("keep"))
     assert e.summary.startswith(
         "Repairing your 2012 Camry is your best move: about $151 a month, compared with $484"
@@ -136,7 +136,7 @@ def test_keep_summary_and_details(monkeypatch):
 
 
 def test_keep_when_trade_unaffordable(monkeypatch):
-    use_settings(monkeypatch, use_fixtures=True)
+    use_settings(monkeypatch, llm_provider="none")
     c = ctx("keep")
     c["krt"] = krt(trade_affordable=False, suggested_models=[COROLLA])
     c["affordability"] = {**AFFORD, "monthly_surplus": 50.0, "max_comfortable_payment": 0.0}
@@ -148,7 +148,7 @@ def test_keep_when_trade_unaffordable(monkeypatch):
 
 
 def test_trade_summary_and_details(monkeypatch):
-    use_settings(monkeypatch, use_fixtures=True)
+    use_settings(monkeypatch, llm_provider="none")
     e = llm.explain(ctx("trade"))
     assert "a 2021 Camry LE (CPO) would run about $430 a month, compared with $612" in e.summary
     assert "125% of what your car is worth" in e.summary
@@ -158,7 +158,7 @@ def test_trade_summary_and_details(monkeypatch):
 
 
 def test_refinance_summary_and_details(monkeypatch):
-    use_settings(monkeypatch, use_fixtures=True)
+    use_settings(monkeypatch, llm_provider="none")
     e = llm.explain(ctx("refinance"))
     assert "about $156 a month, compared with $383 on your current loan" in e.summary
     assert "new loan payment would be about $83" in e.summary
@@ -167,7 +167,7 @@ def test_refinance_summary_and_details(monkeypatch):
 
 
 def test_optional_score_and_factors(monkeypatch):
-    use_settings(monkeypatch, use_fixtures=True)
+    use_settings(monkeypatch, llm_provider="none")
     factors = [
         {"name": "repair cost vs. car value", "weight": 0.35},
         {"name": "monthly surplus", "weight": 0.15},
@@ -186,13 +186,13 @@ def test_optional_score_and_factors(monkeypatch):
      ("repair_then_trade", "keep"), ("refinance", "refinance"), ("KEEP", "keep")],
 )
 def test_older_recommendation_names(monkeypatch, old, new):
-    use_settings(monkeypatch, use_fixtures=True)
+    use_settings(monkeypatch, llm_provider="none")
     assert llm.normalize_recommendation(old) == new
     assert llm.explain({"recommendation": old}).details.startswith(llm.HEADLINES[new])
 
 
 def test_empty_context(monkeypatch):
-    use_settings(monkeypatch, use_fixtures=True)
+    use_settings(monkeypatch, llm_provider="none")
     e = llm.explain({})
     assert e.summary.endswith(llm.SHORT_DISCLAIMER)
     assert e.details.endswith(llm.DISCLAIMER)
@@ -267,6 +267,32 @@ def test_explain_uses_llm_reply(monkeypatch, rec):
     assert '"suggested_models"' in user_msg and "2021 Camry LE (CPO)" in user_msg
     assert "repair_ratio" not in user_msg  # raw ratio replaced by display value
     assert "curve" not in user_msg
+
+
+def test_llm_used_even_with_fixture_data(monkeypatch):
+    # USE_FIXTURES controls demo data only; a configured key still writes the explanation.
+    use_settings(monkeypatch, use_fixtures=True)
+    calls: list = []
+    monkeypatch.setattr(llm.httpx, "post", fake_post(json.dumps(LLM_REPLIES["keep"]), calls))
+    assert llm.explain(ctx("keep")).summary.startswith(LLM_REPLIES["keep"]["summary"])
+    assert len(calls) == 1
+
+
+def test_llm_reply_with_prose_around_json(monkeypatch):
+    use_settings(monkeypatch)
+    reply = "Here is the explanation:\n" + json.dumps(LLM_REPLIES["keep"]) + "\nHope that helps!"
+    monkeypatch.setattr(llm.httpx, "post", fake_post(reply, []))
+    assert llm.explain(ctx("keep")).summary.startswith("Fix your Camry")
+
+
+def test_llm_timeout_falls_back(monkeypatch):
+    use_settings(monkeypatch)
+
+    def slow(*a, **k):
+        raise httpx.ReadTimeout("slow")
+
+    monkeypatch.setattr(llm.httpx, "post", slow)
+    assert llm.explain(ctx("trade")) == template(ctx("trade"))
 
 
 def test_llm_reply_in_code_fence(monkeypatch):
