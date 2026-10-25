@@ -15,6 +15,7 @@ import IssuesDrawer from "@/components/dashboard/IssuesDrawer";
 import SiteFooter from "@/components/dashboard/SiteFooter";
 import ToyotaLogo from "@/components/dashboard/ToyotaLogo";
 import VehicleDrawer from "@/components/dashboard/VehicleDrawer";
+import { backendReachable } from "@/lib/advisor/service";
 import { useAdvisorState } from "@/lib/advisor/state";
 import { getProfiles, type Profile } from "@/lib/api";
 import { DEMO_PROFILE_IDS, MOCK_PROFILES, displayFor } from "@/lib/demo/profiles";
@@ -27,7 +28,8 @@ const Chevron = () => (
 );
 
 export default function Dashboard() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  // Start from the local copy of the demo profiles so the page never waits on the network.
+  const [profiles, setProfiles] = useState<Profile[]>(MOCK_PROFILES);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
@@ -37,9 +39,12 @@ export default function Dashboard() {
   useEffect(() => {
     let live = true;
     const onlyDemo = (ps: Profile[]) => ps.filter((p) => DEMO_PROFILE_IDS.includes(p.id));
-    getProfiles()
-      .then((p) => live && setProfiles(onlyDemo(p)))
-      .catch(() => { if (live) setProfiles(MOCK_PROFILES); });
+    if (backendReachable()) {
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000));
+      Promise.race([getProfiles(), timeout])
+        .then((p) => { const demo = onlyDemo(p); if (live && demo.length) setProfiles(demo); })
+        .catch(() => {});
+    }
     setProfileId(loadSession().profileId);
     return () => { live = false; };
   }, []);

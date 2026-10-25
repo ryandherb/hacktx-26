@@ -32,9 +32,18 @@ export type Served<T> = { data: T; mocked: boolean };
 
 const SURVEY_API = process.env.NEXT_PUBLIC_SURVEY_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+// Only call a backend when one is configured, or when the site itself runs on this machine.
+// A deployed page that calls http://localhost makes Chrome hold the request for a local-network
+// permission prompt, so it never resolves; fall straight back to the labeled mocks instead.
+export function backendReachable(): boolean {
+  if (process.env.NEXT_PUBLIC_SURVEY_API_URL || process.env.NEXT_PUBLIC_API_URL) return true;
+  return typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
+}
+
 type VehicleFacts = { vehicle_model: string; vehicle_year: number; zip_code: string };
 
 export async function submitProblem(profileId: string, text: string, vehicle: VehicleFacts): Promise<Served<PreQuoteSurveyResult>> {
+  if (!backendReachable()) return mockSurvey(profileId, text, vehicle);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 5000);
   try {
@@ -51,7 +60,11 @@ export async function submitProblem(profileId: string, text: string, vehicle: Ve
   } finally {
     clearTimeout(timer);
   }
-  // MOCK: mirrors the real contract's "complete" response using the profile's own facts.
+  return mockSurvey(profileId, text, vehicle);
+}
+
+// MOCK: mirrors the real contract's "complete" response using the profile's own facts.
+function mockSurvey(profileId: string, text: string, vehicle: VehicleFacts): Served<PreQuoteSurveyResult> {
   const quote_input = { repair_type: text, vehicle_model: vehicle.vehicle_model, vehicle_year: vehicle.vehicle_year, location: vehicle.zip_code };
   return {
     mocked: true,
@@ -111,6 +124,7 @@ export type CostQuoteResult = {
 };
 
 export async function getQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): Promise<Served<CostQuoteResult>> {
+  if (!backendReachable()) return { mocked: true, data: mockQuote(profileId, quoteInput, manualQuote) };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
