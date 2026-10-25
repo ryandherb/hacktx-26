@@ -43,6 +43,12 @@ DEFAULT_BASE_URLS = {
 DEFAULT_MODELS = {"meta": "muse-spark-1.3", "muse": "muse-spark-1.3"}
 # Muse Spark reasons before answering; "minimal" keeps those tokens from eating max_tokens.
 DEFAULT_REASONING_EFFORT = {"meta": "minimal", "muse": "minimal"}
+# Models tried after the main one when LLM_FALLBACK_MODELS is empty. muse-spark-1.3
+# intermittently answers 404 model_not_found for a model it just served.
+DEFAULT_FALLBACK_MODELS = {"meta": ["muse-spark-1.2"], "muse": ["muse-spark-1.2"]}
+# Retried once on the same model, then the next model is tried. Timeouts skip the retry.
+TRANSIENT_STATUS = {404, 408, 409, 429, 500, 502, 503, 504}
+ATTEMPTS_PER_MODEL = 2
 
 # Recommendation values: "keep" | "trade" | "refinance".
 # Older names from the scaffold and earlier plans map onto them.
@@ -157,7 +163,6 @@ def _complete(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     body: dict[str, Any] = {
-        "model": model,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens or s.llm_max_tokens,
@@ -166,22 +171,44 @@ def _complete(
     if effort:
         body["reasoning_effort"] = effort
 
-    try:
-        r = httpx.post(
-            _chat_url(),
-            headers={
-                "Authorization": f"Bearer {s.llm_api_key.strip()}",
-                "Content-Type": "application/json",
-            },
-            json=body,
-            timeout=s.llm_timeout_seconds,
-        )
-        r.raise_for_status()
-        return _content_from_response(r.json())
-    except LLMError:
-        raise
-    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as e:
-        raise LLMError(f"LLM request failed: {e}") from e
+    url = _chat_url()
+    last_error: Exception | None = None
+    for candidate in _models(model):
+        for _ in range(ATTEMPTS_PER_MODEL):
+            try:
+                r = httpx.post(
+                    url,
+                    headers={
+                        "Authorization": f"Bearer {s.llm_api_key.strip()}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"model": candidate, **body},
+                    timeout=s.llm_timeout_seconds,
+                )
+                r.raise_for_status()
+                return _content_from_response(r.json())
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code not in TRANSIENT_STATUS:
+                    raise LLMError(f"LLM request failed: {e}") from e
+                last_error = e
+            except httpx.TimeoutException as e:
+                last_error = e
+                break
+            except httpx.TransportError as e:
+                last_error = e
+            except (ValueError, KeyError, IndexError, TypeError) as e:
+                raise LLMError(f"LLM request failed: {e}") from e
+            log.info("LLM %s attempt failed (%s), retrying", candidate, last_error)
+    raise LLMError(f"LLM request failed: {last_error}") from last_error
+
+
+def _models(model: str) -> list[str]:
+    """The main model first, then the fallbacks, without duplicates."""
+    s = get_settings()
+    fallbacks = [m.strip() for m in s.llm_fallback_models.split(",") if m.strip()]
+    if not fallbacks:
+        fallbacks = DEFAULT_FALLBACK_MODELS.get(s.llm_provider.strip().lower(), [])
+    return list(dict.fromkeys([model, *fallbacks]))
 
 
 # ---------------------------------------------------------------------------
