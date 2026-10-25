@@ -82,6 +82,11 @@ def analyze(req: AnalysisRequest):
             "krt": analysis.result,
             "vehicle": f"{profile.vehicle_year} {profile.vehicle_model}",
             "repair_cost": handoff.repair_cost,
+            "repair_cost_low": quote.repair.repair_cost_low if quote.repair else None,
+            "repair_cost_high": quote.repair.repair_cost_high if quote.repair else None,
+            "repair_is_quote": bool(quote.repair and quote.repair.source == "manual"),
+            "repair_shop": quote.repair.shop if quote.repair else None,
+            "car_value": handoff.car_value,
             "affordability": afford,
             "horizon_months": req.horizon_months,
         }
@@ -93,6 +98,9 @@ def analyze(req: AnalysisRequest):
             "market": mkt,
             "explanation": explanation.summary,
             "explanation_details": explanation.details,
+            "option_explanations": explanation.options,
+            "repair": handoff.repair,
+            "car_value": handoff.car_value,
         }
     )
 

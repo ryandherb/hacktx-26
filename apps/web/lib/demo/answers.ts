@@ -10,6 +10,12 @@ export const DEMO_SHOP_QUOTES: Record<string, { amount: number; shop: string }> 
   dev: { amount: 1450, shop: "South Austin Auto A/C" },
 };
 
+// The sample mechanic's quote documents in public/demo, matched by shop and amount, so the
+// repair plan can name the job and link the document.
+export const SAMPLE_QUOTE_DOCS: { shop: string; amount: number; title: string; href: string }[] = [
+  { shop: "South Austin Auto A/C", amount: 1450, title: "A/C compressor replacement", href: "/demo/sample-mechanic-quote.pdf" },
+];
+
 export const DEMO_ANSWERS: Record<string, Partial<Record<DemoTopic, string>>> = {
   maria: { repair_description: "Transmission slips when shifting from 2nd to 3rd, and the RPMs jump on the highway." },
   dev: { repair_description: "A/C blows warm air, and there's a grinding noise when it kicks on." },
