@@ -1,25 +1,19 @@
 import pytest
 
-from app.engine import krt
-from app.models.schemas import AffordabilityResult, KRTResult
+from app.engine import simulate
+from app.models.schemas import KRTResult
 
 
-def afford(can_afford: bool = True) -> AffordabilityResult:
-    return AffordabilityResult(
-        monthly_income=5000, monthly_spend=3500, savings_balance=8000, monthly_surplus=1500,
-        runway_months=2.3, can_afford_payment=can_afford, max_comfortable_payment=1000,
-    )
-
-
-def result(keep: float, refi: float, trade: float) -> KRTResult:
+def result(keep: float, refi: float, trade: float, affordable: bool) -> KRTResult:
     return KRTResult(
         keepResult=keep, refinanceResult=refi, tradeResult=trade,
         repair_ratio=0.5, pr_runway=1.0, remaining_life=0.3,
+        new_payment=250, refi_payment=0, suggested_models=[], trade_affordable=affordable,
     )
 
 
 @pytest.mark.parametrize(
-    "keep,refi,trade,can_afford,expected",
+    "keep,refi,trade,affordable,expected",
     [
         (150, 150, 480, True, "keep"),       # keep cheapest
         (380, 155, 590, True, "refinance"),  # refinance cheapest
@@ -30,5 +24,5 @@ def result(keep: float, refi: float, trade: float) -> KRTResult:
         (300, 300, 300, True, "keep"),       # ties go to keep
     ],
 )
-def test_recommend(keep, refi, trade, can_afford, expected):
-    assert krt.recommend(result(keep, refi, trade), afford(can_afford)) == expected
+def test_set_recommendation(keep, refi, trade, affordable, expected):
+    assert simulate.set_recommendation(result(keep, refi, trade, affordable)) == expected

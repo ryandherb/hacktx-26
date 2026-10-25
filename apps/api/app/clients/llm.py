@@ -10,6 +10,7 @@ LLM_API_KEY is empty, the request fails, or the reply contains a number it wasn'
 
 import json
 import logging
+from dataclasses import dataclass
 import math
 import re
 from typing import Any
@@ -23,6 +24,7 @@ log = logging.getLogger(__name__)
 DISCLAIMER = (
     "Prices and recommendations are estimates built on synthetic data, not financial advice."
 )
+SHORT_DISCLAIMER = "Estimates, not financial advice."
 
 # Default base URLs per provider. Anything else needs LLM_BASE_URL.
 DEFAULT_BASE_URLS = {
@@ -49,29 +51,41 @@ Toyota owner with a repair need decide whether to keep (repair) their car, trade
 newer Toyota, or keep it and refinance the loan.
 
 You receive a JSON object with results that were already computed by deterministic code.
-Write a short, friendly, plain-language summary (3 to 5 sentences, no markdown, no lists).
+Reply with ONLY a JSON object with two string fields:
+- "summary": 1 or 2 short, friendly sentences a busy customer can read at a glance. Say the \
+recommendation and the single most important reason, with at most two numbers. End with \
+"{SHORT_DISCLAIMER}"
+- "details": 4 to 7 plain-language sentences (no markdown, no lists) for customers who want \
+the full picture: compare the monthly costs, explain the repair cost and savings, and \
+describe the suggested Toyota models (name, price, payment, and their reason). End with \
+"{DISCLAIMER}"
 
 What the fields mean:
 - recommendation: "keep" (repair and keep the car), "trade" (trade it in now), or \
-"refinance" (keep the car and refinance the loan at a lower payment).
-- krt.keepResult, krt.tradeResult, krt.refinanceResult: estimated monthly cost in dollars \
-of each option. Lower is better.
+"refinance" (keep the car and refinance the loan).
+- krt.keepResult, krt.tradeResult, krt.refinanceResult: estimated all-in monthly cost in \
+dollars of each option. Lower is better.
+- krt.new_payment: monthly loan payment for the best replacement car. krt.refi_payment: \
+monthly loan payment after refinancing. krt.trade_affordable: whether any replacement fits \
+the customer's comfortable payment.
+- krt.suggested_models: up to 3 Toyota models, best first, with price, down_payment, \
+new_payment (loan), insurance_delta and fuel_delta (monthly change; negative means \
+savings), monthly_cost (all-in) and a reason.
 - krt.repair_pct_of_car_value: the repair cost as a percent of what the car is worth.
 - krt.savings_months_after_repair: months of spending the customer's savings would cover \
 after paying for the repair. Negative means the repair costs more than their savings.
 - krt.remaining_life_pct: percent of the car's expected life left.
-- repair_cost: estimated repair cost in dollars.
+- repair_cost: estimated repair cost in dollars. vehicle: the customer's current car.
 - affordability: the customer's monthly income, spending, savings, surplus, and the largest \
 monthly payment that looks comfortable.
 
 Strict rules:
-- Never compute, estimate, round differently, add up, or invent any number. Only restate \
-numbers exactly as they appear in the JSON. If a number is not in the JSON, do not mention it.
+- Never compute, estimate, round differently, add up, subtract, or invent any number. Only \
+restate numbers exactly as they appear in the JSON. If a number is not in the JSON, do not \
+mention it. Do not state differences or savings between options unless that number is given.
 - Do not change the recommendation. Explain the one you were given.
-- Lead with the recommendation, then compare the monthly costs, then mention one or two \
-other facts that support it.
-- Only mention crossover_month if the recommendation is "trade".
-- End with this exact sentence: "{DISCLAIMER}"
+- If the recommendation is not "trade", you may mention the best suggested model as an \
+option for later.
 """
 
 
@@ -152,6 +166,12 @@ def _complete(prompt: str, system: str | None = None, temperature: float = 0.2) 
 # ---------------------------------------------------------------------------
 
 
+@dataclass
+class Explanation:
+    summary: str  # 1-2 sentences for the main results card
+    details: str  # full explanation with the numbers, for the "more details" drop-down
+
+
 def normalize_recommendation(rec: str | None) -> str | None:
     """Map older names (repair, replace_now, replace_later, ...) to keep/trade/refinance."""
     if rec is None:
@@ -175,28 +195,45 @@ def _build_facts(context: dict) -> dict:
     """The exact facts the LLM (or template) is allowed to use."""
     ctx = _to_plain(dict(context))
     ctx["recommendation"] = normalize_recommendation(ctx.get("recommendation"))
-    # The full monthly curve is long and invites the LLM to do math. Pass the
-    # simulation's own summary fields instead; drop the raw points.
+    # The full monthly curve is long and invites the LLM to do math; drop it.
     ctx.pop("curve", None)
     if isinstance(ctx.get("krt"), dict):
         ctx["krt"] = _krt_display(ctx["krt"])
     return ctx
 
 
+SUGGESTED_FIELDS = (
+    "name", "kind", "price", "seats", "mpg", "down_payment", "new_payment",
+    "insurance_delta", "fuel_delta", "monthly_cost", "reason",
+)
+
+
 def _krt_display(krt: dict) -> dict:
     """KRTResult with ratios turned into ready-to-say values, so the LLM never has to."""
-    out = {k: krt[k] for k in ("keepResult", "tradeResult", "refinanceResult") if k in krt}
-    if isinstance(krt.get("repair_ratio"), (int, float)):
+    keys = ("keepResult", "tradeResult", "refinanceResult", "new_payment", "refi_payment",
+            "trade_affordable")
+    out = {k: krt[k] for k in keys if k in krt}
+    if _num(krt.get("repair_ratio")):
         out["repair_pct_of_car_value"] = round(krt["repair_ratio"] * 100)
-    if isinstance(krt.get("pr_runway"), (int, float)):
+    if _num(krt.get("pr_runway")):
         out["savings_months_after_repair"] = round(krt["pr_runway"], 1)
-    if isinstance(krt.get("remaining_life"), (int, float)):
+    if _num(krt.get("remaining_life")):
         out["remaining_life_pct"] = round(krt["remaining_life"] * 100)
+    if isinstance(krt.get("suggested_models"), list):
+        out["suggested_models"] = [
+            {k: m[k] for k in SUGGESTED_FIELDS if k in m}
+            for m in krt["suggested_models"][:3]
+            if isinstance(m, dict)
+        ]
     return out
 
 
 def _money(v: Any) -> str:
     return f"${float(v):,.0f}"
+
+
+def _num(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
 def _factor_name(f: Any) -> str | None:
@@ -216,10 +253,84 @@ def _top_factors(factors: Any, n: int = 3) -> list[dict | str]:
 
     def weight(f: Any) -> float:
         w = f.get("weight", f.get("contribution")) if isinstance(f, dict) else None
-        return abs(float(w)) if isinstance(w, (int, float)) else 0.0
+        return abs(float(w)) if _num(w) else 0.0
 
     return sorted(factors, key=weight, reverse=True)[:n]
 
+
+def _car_name(facts: dict) -> str:
+    v = facts.get("vehicle")
+    return f"your {v}" if isinstance(v, str) and v.strip() else "your car"
+
+
+def _best_pick(krt: dict) -> dict | None:
+    picks = krt.get("suggested_models")
+    return picks[0] if isinstance(picks, list) and picks and isinstance(picks[0], dict) else None
+
+
+def _pick_line(m: dict) -> str:
+    """'2021 Camry LE (CPO) at $24,500: about $291/mo loan payment with $4,900 down'"""
+    line = m.get("name", "a newer Toyota")
+    if _num(m.get("price")):
+        line += f" at {_money(m['price'])}"
+    if _num(m.get("new_payment")):
+        line += f": about {_money(m['new_payment'])} a month loan payment"
+        if _num(m.get("down_payment")):
+            line += f" with {_money(m['down_payment'])} down"
+    if m.get("reason"):
+        line += f" ({m['reason']})"
+    return line
+
+
+# --- short summary -----------------------------------------------------------
+
+SHORT_HEADLINES = {
+    "keep": "Repairing {car} is your best move",
+    "trade": "Trading in {car} is your best move",
+    "refinance": "Keeping {car} and refinancing the loan is your best move",
+}
+
+
+def _summary_template(facts: dict) -> str:
+    """1-2 plain sentences plus a short disclaimer. Formats given numbers only."""
+    rec = facts.get("recommendation")
+    krt = facts.get("krt") if isinstance(facts.get("krt"), dict) else {}
+    keep, trade, refi = krt.get("keepResult"), krt.get("tradeResult"), krt.get("refinanceResult")
+    best = _best_pick(krt)
+    car = _car_name(facts)
+
+    if rec not in SHORT_HEADLINES:
+        return f"Here's a summary of your options. {SHORT_DISCLAIMER}"
+    first = SHORT_HEADLINES[rec].format(car=car)
+    if rec == "keep" and _num(keep) and _num(trade):
+        first += f": about {_money(keep)} a month, compared with {_money(trade)} to trade in."
+    elif rec == "refinance" and _num(refi) and _num(keep):
+        first += f": about {_money(refi)} a month, compared with {_money(keep)} on your current loan."
+    elif rec == "trade" and best and _num(best.get("monthly_cost")) and _num(keep):
+        first += (
+            f": a {best.get('name', 'newer Toyota')} would run about "
+            f"{_money(best['monthly_cost'])} a month, compared with {_money(keep)} to keep "
+            "your current car."
+        )
+    else:
+        first += "."
+    parts = [first[0].upper() + first[1:]]
+
+    pct = krt.get("repair_pct_of_car_value")
+    if rec == "keep" and krt.get("trade_affordable") is False:
+        parts.append("A new car payment doesn't fit your budget right now.")
+    elif rec == "trade" and _num(pct):
+        parts.append(f"The repair would cost about {pct:g}% of what your car is worth.")
+    elif rec == "refinance" and _num(krt.get("refi_payment")):
+        parts.append(f"Your new loan payment would be about {_money(krt['refi_payment'])} a month.")
+    elif rec == "keep" and _num(pct):
+        parts.append(f"The repair is about {pct:g}% of what your car is worth, so fixing it pays off.")
+
+    parts.append(SHORT_DISCLAIMER)
+    return " ".join(parts)
+
+
+# --- detailed explanation ----------------------------------------------------
 
 HEADLINES = {
     "keep": "Repairing and keeping your current car looks like the best move.",
@@ -228,13 +339,10 @@ HEADLINES = {
 }
 
 
-def _num(v: Any) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool)
-
-
-def _template(facts: dict) -> str:
-    """Deterministic explanation. Only formats numbers from `facts`; computes nothing."""
+def _details_template(facts: dict) -> str:
+    """Full explanation with the numbers. Only formats numbers from `facts`; computes nothing."""
     rec = facts.get("recommendation")
+    krt = facts.get("krt") if isinstance(facts.get("krt"), dict) else {}
     parts: list[str] = []
     if rec in HEADLINES:
         parts.append(HEADLINES[rec])
@@ -243,7 +351,6 @@ def _template(facts: dict) -> str:
     if _num(score):
         parts.append(f"Your KRT score is {score:g} out of 100 (0 leans repair, 100 leans trade).")
 
-    krt = facts.get("krt") if isinstance(facts.get("krt"), dict) else {}
     keep, trade, refi = krt.get("keepResult"), krt.get("tradeResult"), krt.get("refinanceResult")
     if _num(keep) and _num(trade):
         costs = f"Estimated monthly cost: keeping {_money(keep)}, trading {_money(trade)}"
@@ -274,9 +381,29 @@ def _template(facts: dict) -> str:
     if _num(life):
         parts.append(f"The car has about {life:g}% of its expected life left.")
 
-    crossover = facts.get("crossover_month")
-    if rec == "trade" and crossover is not None:
-        parts.append(f"Trading starts to cost less than keeping around month {crossover}.")
+    if rec == "refinance" and _num(krt.get("refi_payment")):
+        parts.append(f"Refinancing would set your loan payment at about {_money(krt['refi_payment'])} a month.")
+
+    best = _best_pick(krt)
+    picks = krt.get("suggested_models") or []
+    if rec == "trade" and picks:
+        parts.append("Top picks for you: " + "; ".join(_pick_line(m) for m in picks) + ".")
+    elif best:
+        lead = "If you'd rather trade in, the best fit is "
+        over = krt.get("trade_affordable") is False and "comfortable" not in str(best.get("reason", ""))
+        tail = ", though that's over your comfortable payment" if over else ""
+        parts.append(lead + _pick_line(best) + tail + ".")
+    if best:
+        extras = []
+        if _num(best.get("insurance_delta")) and best["insurance_delta"] > 0:
+            extras.append(f"insurance would go up about {_money(best['insurance_delta'])} a month")
+        if _num(best.get("fuel_delta")) and best["fuel_delta"] < 0:
+            extras.append(f"you'd save about {_money(-best['fuel_delta'])} a month on gas")
+        elif _num(best.get("fuel_delta")) and best["fuel_delta"] > 0:
+            extras.append(f"gas would cost about {_money(best['fuel_delta'])} more a month")
+        if extras:
+            sentence = "With that car, " + " and ".join(extras) + "."
+            parts.append(sentence)
 
     names = [n for n in (_factor_name(f) for f in _top_factors(facts.get("factors"))) if n]
     if names:
@@ -301,6 +428,10 @@ def _template(facts: dict) -> str:
         parts.append("Here is a summary of your keep, trade, or refinance analysis.")
     parts.append(DISCLAIMER)
     return " ".join(parts)
+
+
+def _template(facts: dict) -> Explanation:
+    return Explanation(summary=_summary_template(facts), details=_details_template(facts))
 
 
 # --- guardrail: the LLM may only restate numbers it was given ----------------
@@ -351,35 +482,51 @@ def _llm_enabled_for_explain() -> bool:
     return llm_configured() and not get_settings().use_fixtures
 
 
-def explain(context: dict) -> str:
-    """Plain-language explanation of a KRT result.
+def _checked(text: Any, facts: dict, fallback: str, disclaimer: str, label: str) -> str:
+    """Use the LLM's text unless it's missing or has invented numbers."""
+    if not isinstance(text, str) or not text.strip():
+        log.warning("explain: LLM %s missing; using template", label)
+        return fallback
+    text = text.strip()
+    invented = _invented_numbers(text, facts)
+    if invented:
+        log.warning("explain: LLM %s used numbers not in the facts %s; using template", label, invented)
+        return fallback
+    if "not financial advice" not in text.lower():
+        text = f"{text} {disclaimer}"
+    return text
+
+
+def explain(context: dict) -> Explanation:
+    """Short summary + detailed explanation of a KRT result.
 
     Expected keys (all optional): `recommendation` (keep | trade | refinance; older names
-    are mapped), `krt` (KRTResult or dict), `repair_cost` (or `repair_cost_low` and
-    `repair_cost_high`), `crossover_month`, `horizon_months`, `affordability`
-    (AffordabilityResult or dict), `krt_score` (0-100) and `factors` (list of
-    {name/label, weight, detail} or {name: weight}). A raw `curve` is dropped.
+    are mapped), `krt` (KRTResult or dict, including `suggested_models`), `vehicle`
+    (e.g. "2012 Camry"), `repair_cost` (or `repair_cost_low` and `repair_cost_high`),
+    `affordability` (AffordabilityResult or dict), `horizon_months`, `krt_score` (0-100)
+    and `factors`. A raw `curve` is dropped.
     """
     facts = _build_facts(context)
+    fallback = _template(facts)
     if not _llm_enabled_for_explain():
-        return _template(facts)
+        return fallback
 
     try:
-        text = _complete(
+        reply = _complete(
             "Explain this result. Facts (JSON):\n" + json.dumps(facts, default=str),
             system=EXPLAIN_SYSTEM_PROMPT,
         )
-    except LLMError as e:
+        data = json.loads(_strip_code_fence(reply))
+        if not isinstance(data, dict):
+            raise ValueError("reply is not a JSON object")
+    except (LLMError, ValueError) as e:
         log.warning("explain: falling back to template (%s)", e)
-        return _template(facts)
+        return fallback
 
-    invented = _invented_numbers(text, facts)
-    if invented:
-        log.warning("explain: LLM used numbers not in the facts %s; using template", invented)
-        return _template(facts)
-    if DISCLAIMER not in text:
-        text = f"{text} {DISCLAIMER}"
-    return text
+    return Explanation(
+        summary=_checked(data.get("summary"), facts, fallback.summary, SHORT_DISCLAIMER, "summary"),
+        details=_checked(data.get("details"), facts, fallback.details, DISCLAIMER, "details"),
+    )
 
 
 # ---------------------------------------------------------------------------

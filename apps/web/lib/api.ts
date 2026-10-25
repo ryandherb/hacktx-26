@@ -33,6 +33,21 @@ export type Market = {
   repair_quotes: { shop: string; estimate: number; source: string }[];
 };
 
+export type SuggestedModel = {
+  name: string;
+  price: number;
+  kind: string;
+  seats: number;
+  mpg: number;
+  body: string;
+  down_payment: number;
+  new_payment: number;
+  insurance_delta: number;
+  fuel_delta: number;
+  monthly_cost: number;
+  reason: string;
+};
+
 export type KRTResult = {
   keepResult: number;
   refinanceResult: number;
@@ -40,6 +55,10 @@ export type KRTResult = {
   repair_ratio: number;
   pr_runway: number;
   remaining_life: number;
+  new_payment: number;
+  refi_payment: number;
+  suggested_models: SuggestedModel[];
+  trade_affordable: boolean;
 };
 
 export type PFOFactors = {
@@ -58,13 +77,18 @@ export type PFOFactors = {
 
 export type Analysis = {
   profile_id: string;
-  curve: CurvePoint[];
-  crossover_month: number | null;
-  result: KRTResult;
   recommendation: "keep" | "trade" | "refinance";
-  affordability: Affordability;
-  market: Market;
-  explanation: string;
+  result: KRTResult;
+  new_monthly_payment: number;
+  suggested_models: SuggestedModel[] | null; // only when recommendation === "trade"
+  apr: number | null;
+  down_payment: number | null;
+  affordability: Affordability; // always set by /analyze
+  market: Market; // always set by /analyze
+  explanation: string; // short summary for the results card
+  explanation_details: string; // longer version for the "more details" drop-down
+  curve: CurvePoint[]; // legacy chart data; empty now
+  crossover_month: number | null;
 };
 
 export type CarFund = {

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.clients import llm, nessie, serpapi
-from app.engine import affordability, krt, simulate, valuation
+from app.engine import affordability, simulate, valuation
 from app.models.schemas import (
     AnalysisRequest,
     AnalysisResult,
@@ -44,36 +44,29 @@ def analyze(req: AnalysisRequest):
     snapshot = nessie.get_snapshot(profile)
     afford = affordability.compute(snapshot)
     mkt = serpapi.get_market_data(profile)
-    # Cost curve for the chart (placeholder model in simulate.py).
-    curve, crossover, _ = simulate.run(profile, mkt, afford, req)
-
-    # KRT engine: monthly costs for keep / trade / refinance, then the recommendation.
-    repair_cost = valuation.estimated_repair_cost(mkt)
     pfo = PFOFactors(down_payment=req.down_payment)
-    result = krt.score(
-        profile, valuation.current_value(mkt), afford, mkt, repair_cost, snapshot, pfo
-    )
-    rec = krt.recommend(result, afford)
+
+    # KRT engine: monthly costs, recommendation, and suggested Toyota models.
+    analysis = simulate.run(profile, mkt, afford, req, snapshot, pfo)
 
     explanation = llm.explain(
         {
-            "recommendation": rec,
-            "krt": result,
-            "repair_cost": repair_cost,
-            "crossover_month": crossover,
+            "recommendation": analysis.recommendation,
+            "krt": analysis.result,
+            "vehicle": f"{profile.vehicle_year} {profile.vehicle_model}",
+            "repair_cost": valuation.estimated_repair_cost(mkt),
             "affordability": afford,
             "horizon_months": req.horizon_months,
         }
     )
-    return AnalysisResult(
-        profile_id=profile.id,
-        curve=curve,
-        crossover_month=crossover,
-        result=result,
-        recommendation=rec,
-        affordability=afford,
-        market=mkt,
-        explanation=explanation,
+    return analysis.model_copy(
+        update={
+            "profile_id": profile.id,
+            "affordability": afford,
+            "market": mkt,
+            "explanation": explanation.summary,
+            "explanation_details": explanation.details,
+        }
     )
 
 

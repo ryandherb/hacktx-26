@@ -3,14 +3,18 @@
     "current_vehicle_value_low": 4200,
     "current_vehicle_value_high": 5600,
     "scheduled_maintenance": [
-      {"cost": 60, "interval": 5000},
-      {"cost": 25, "interval": 7500},
-      {"cost": 150, "interval": 30000},
-      {"cost": 350, "interval": 40000}
+      {"name": "Oil and filter change", "cost": 75, "interval": 5000},
+      {"name": "Tire rotation", "cost": 30, "interval": 5000},
+      {"name": "Engine and cabin air filters", "cost": 90, "interval": 30000},
+      {"name": "Brake pads", "cost": 300, "interval": 40000},
+      {"name": "Coolant flush", "cost": 150, "interval": 100000}
     ],
     "replacement_options": [
       {"name": "2021 Camry LE (CPO)", "price": 24500, "kind": "cpo"},
-      {"name": "2025 Camry LE", "price": 29800, "kind": "new"}
+      {"name": "2025 Camry LE", "price": 29800, "kind": "new"},
+      {"name": "2022 Camry Hybrid LE (CPO)", "price": 26900, "kind": "cpo"},
+      {"name": "2021 Corolla LE (CPO)", "price": 19500, "kind": "cpo"},
+      {"name": "2022 RAV4 Hybrid XLE (CPO)", "price": 31500, "kind": "cpo"}
     ],
     "repair_quotes": [
       {"shop": "Austin Transmission Co.", "estimate": 3200, "source": "fixture"},
@@ -21,14 +25,17 @@
     "current_vehicle_value_low": 2200,
     "current_vehicle_value_high": 3200,
     "scheduled_maintenance": [
-      {"cost": 60, "interval": 5000},
-      {"cost": 25, "interval": 7500},
-      {"cost": 150, "interval": 30000},
-      {"cost": 350, "interval": 40000}
+      {"name": "Oil and filter change", "cost": 75, "interval": 5000},
+      {"name": "Tire rotation", "cost": 30, "interval": 5000},
+      {"name": "Engine and cabin air filters", "cost": 90, "interval": 30000},
+      {"name": "Brake pads", "cost": 300, "interval": 40000},
+      {"name": "Coolant flush", "cost": 150, "interval": 100000}
     ],
     "replacement_options": [
       {"name": "2019 Corolla LE (used)", "price": 16900, "kind": "used"},
-      {"name": "2025 Corolla LE", "price": 23000, "kind": "new"}
+      {"name": "2025 Corolla LE", "price": 23000, "kind": "new"},
+      {"name": "2020 Prius L Eco (used)", "price": 18400, "kind": "used"},
+      {"name": "2020 Corolla Hybrid LE (used)", "price": 18900, "kind": "used"}
     ],
     "repair_quotes": [
       {"shop": "South Austin Auto A/C", "estimate": 1150, "source": "fixture"},
@@ -39,14 +46,18 @@
     "current_vehicle_value_low": 7800,
     "current_vehicle_value_high": 9600,
     "scheduled_maintenance": [
-      {"cost": 60, "interval": 5000},
-      {"cost": 25, "interval": 7500},
-      {"cost": 150, "interval": 30000},
-      {"cost": 350, "interval": 40000}
+      {"name": "Oil and filter change", "cost": 75, "interval": 5000},
+      {"name": "Tire rotation", "cost": 30, "interval": 5000},
+      {"name": "Engine and cabin air filters", "cost": 90, "interval": 30000},
+      {"name": "Brake pads", "cost": 300, "interval": 40000},
+      {"name": "Coolant flush", "cost": 150, "interval": 100000}
     ],
     "replacement_options": [
       {"name": "2021 RAV4 XLE (CPO)", "price": 28900, "kind": "cpo"},
-      {"name": "2025 RAV4 LE", "price": 32500, "kind": "new"}
+      {"name": "2025 RAV4 LE", "price": 32500, "kind": "new"},
+      {"name": "2022 RAV4 Hybrid LE (CPO)", "price": 30500, "kind": "cpo"},
+      {"name": "2022 Corolla Cross L (CPO)", "price": 23900, "kind": "cpo"},
+      {"name": "2021 Highlander L (CPO)", "price": 32900, "kind": "cpo"}
     ],
     "repair_quotes": [
       {"shop": "North Austin Toyota Service", "estimate": 420, "source": "fixture"},

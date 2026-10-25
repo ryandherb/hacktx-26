@@ -10,8 +10,6 @@ class ServiceRecord(BaseModel):
 
 
 class Profile(BaseModel):
-    """Synthetic Toyota customer profile."""
-
     id: str
     name: str
     nessie_customer_id: str | None = None
@@ -77,6 +75,20 @@ class PFOFactors(BaseModel):
 
     credit_confidence: Literal["low", "medium", "high"] = "medium"
 
+class SuggestedModel(BaseModel):
+    name: str
+    price: float
+    kind: str  # new | cpo | used
+    seats: int
+    mpg: float
+    body: str
+    down_payment: float
+    new_payment: float
+    insurance_delta: float
+    fuel_delta: float
+    monthly_cost: float
+    reason: str = ""
+
 class KRTResult(BaseModel):
     keepResult: float
     refinanceResult: float
@@ -84,16 +96,30 @@ class KRTResult(BaseModel):
     repair_ratio: float
     pr_runway: float
     remaining_life: float
+    new_payment: float
+    refi_payment: float
+    suggested_models: list[SuggestedModel]
+    trade_affordable: bool
 
 class AnalysisResult(BaseModel):
-    profile_id: str
-    curve: list[CurvePoint]
-    crossover_month: int | None
+    profile_id: str = ""
+    recommendation: Literal["keep", "refinance", "trade"]
     result: KRTResult
-    recommendation: Literal["keep", "trade", "refinance"]
-    affordability: AffordabilityResult
-    market: MarketData
-    explanation: str
+    new_monthly_payment: float
+
+    suggested_models: list[SuggestedModel] | None = None  # only when recommendation == "trade"
+
+    apr: float | None = None  # None when PFO didn't supply one (engine used its default)
+    down_payment: float | None = None
+
+    affordability: AffordabilityResult | None = None
+    market: MarketData | None = None
+    explanation: str = ""  # short, plain-language summary (Explanation Agent)
+    explanation_details: str = ""  # longer version with the full numbers (drop-down)
+
+    # Legacy chart data for the old dashboard (app/page.tsx); empty now.
+    curve: list[CurvePoint] = Field(default_factory=list)
+    crossover_month: int | None = None
 
 
 class CarFundRequest(BaseModel):

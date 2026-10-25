@@ -1,7 +1,7 @@
-from app.models.schemas import (KRTResult, PFOFactors, Profile, MarketData, AffordabilityResult)
+from app.models.schemas import (KRTResult, PFOFactors, Profile, MarketData, AffordabilityResult, SuggestedModel)
 from datetime import date
 
-from app.engine import insurance, valuation
+from app.engine import insurance, replacement
 
 L_EXPECTED = 200000
 AVG_UNSCHED_REPAIRS = 0.3
@@ -85,29 +85,31 @@ def score(
 
     total_m = m_sched + m_unsched
 
-    # insurance calculations
-    replacement_price = valuation.default_replacement(market)["price"]
     ins_now = insurance.current_premium(profile, snapshot, car_value)
-    ins_trade = insurance.trade_premium(ins_now, car_value, replacement_price)
-    ins_delta = ins_trade - ins_now
+    miles_per_month = lifetime_average * usage_multiplier
+    catalog = replacement.load_catalog()
+    fuel_now = replacement.current_fuel(profile.vehicle_model, miles_per_month, catalog)
+    risk_margin = new_debt_risk_margin(pfo_factors)
 
     # Costs per month over economic horizon
 
     # Keep: the repair cost over the horizon, total monthly repair expenses and the current monthly insurance payment
     c_keep = repair_cost / HORIZON + total_m + profile.monthly_payment
 
-    # Trade: equity (negative rolls into the loan) and down payment reduce the financed amount
-    down = pfo_factors.down_payment if pfo_factors.down_payment is not None else DEFAULT_DOWN_PCT * replacement_price
-    financed = max(0, replacement_price - down - equity)
-    new_payment = loan_payment(financed, apr, LOAN_TERM_MONTHS)
-    c_trade = down / HORIZON + new_payment + ins_delta
+    # Trade: price every replacement option, then use the best pick for c_trade
+    options = [
+        trade_option(o, car_value, equity, apr, pfo_factors, ins_now, fuel_now, miles_per_month, risk_margin, catalog)
+        for o in market.replacement_options
+    ]
+    suggested, trade_affordable = replacement.pick(options, pfo_factors, afford)
+    best = suggested[0]
+    c_trade = best.monthly_cost
+    new_payment = best.new_payment
 
     # Refinance: keep the car, re-amortize the remaining balance at the PFO APR
     refi_payment = loan_payment(profile.loan_balance, apr, LOAN_TERM_MONTHS)
     c_refinance = c_keep - profile.monthly_payment + refi_payment
 
-    risk_margin = new_debt_risk_margin(pfo_factors)
-    c_trade *= 1 + risk_margin
     c_refinance *= 1 + risk_margin / 2
 
     return KRTResult(
@@ -116,7 +118,34 @@ def score(
         tradeResult=round(c_trade, 2),
         repair_ratio=repair_ratio,
         pr_runway=pr_runway,
-        remaining_life=remaining_life
+        remaining_life=remaining_life,
+        new_payment=new_payment,
+        refi_payment=refi_payment,
+        suggested_models=suggested,
+        trade_affordable=trade_affordable,
+    )
+
+def trade_option(option, car_value, equity, apr, pfo_factors, ins_now, fuel_now, miles_per_month, risk_margin, catalog) -> SuggestedModel:
+    specs = replacement.specs_for(option["name"], catalog)
+    price = option["price"]
+    down = pfo_factors.down_payment if pfo_factors.down_payment is not None else DEFAULT_DOWN_PCT * price
+    financed = max(0, price - down - equity)
+    payment = loan_payment(financed, apr, LOAN_TERM_MONTHS)
+    ins_delta = insurance.trade_premium(ins_now, car_value, price) - ins_now
+    fuel_delta = replacement.monthly_fuel(specs["mpg"], miles_per_month) - fuel_now
+    cost = (down / HORIZON + payment + ins_delta + fuel_delta) * (1 + risk_margin)
+    return SuggestedModel(
+        name=option["name"],
+        price=price,
+        kind=option.get("kind", "used"),
+        seats=specs["seats"],
+        mpg=specs["mpg"],
+        body=specs["body"],
+        down_payment=round(down, 2),
+        new_payment=round(payment, 2),
+        insurance_delta=round(ins_delta, 2),
+        fuel_delta=round(fuel_delta, 2),
+        monthly_cost=round(cost, 2),
     )
 
 def loan_payment(principal, apr, months):
@@ -136,17 +165,3 @@ def calculate_average_repair_cost(mileage, car_value):
     price_tier = (car_value / PRICE_TIER_SCALER) ** 0.3
     
     return BASE_REPAIR_COST * wear_drift * price_tier
-
-
-def recommend(result: KRTResult, afford: AffordabilityResult) -> str:
-    """Pick "keep" | "trade" | "refinance": the lowest monthly cost the customer can afford.
-
-    Keep is the default and wins ties. Refinance must be strictly cheaper than keep
-    (with no loan they're equal). Trade needs a payment the customer can afford.
-    """
-    options = [("keep", result.keepResult)]
-    if result.refinanceResult < result.keepResult:
-        options.append(("refinance", result.refinanceResult))
-    if afford.can_afford_payment and result.tradeResult < result.keepResult:
-        options.append(("trade", result.tradeResult))
-    return min(options, key=lambda o: o[1])[0]  # min keeps the first on ties
