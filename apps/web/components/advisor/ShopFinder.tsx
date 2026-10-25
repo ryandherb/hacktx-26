@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 import { directionsUrl, nearestDealers, type LatLng } from "@/lib/demo/shops";
 import { ring } from "./AdvisorPanel";
@@ -13,14 +13,33 @@ const pin = (n: number, active: boolean) =>
   </svg>`;
 
 // Nearest Toyota dealerships on a real map (Leaflet + Esri tiles, no API key)
-// next to a ranked list. Selecting a dealer highlights and centers its pin.
+// next to a ranked list. Clicking a dealer (row or pin) highlights and centers its pin, and only
+// a click reports it through onSelect, so the parent never assumes a dealer the user didn't pick.
 export default function ShopFinder({ origin, onSelect }: { origin: LatLng; onSelect?: (name: string) => void }) {
-  const dealers = nearestDealers(origin);
+  const dealers = useMemo(() => nearestDealers(origin), [origin.lat, origin.lng]);
   const [active, setActive] = useState(0);
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<LeafletMap | null>(null);
   const markers = useRef<Marker[]>([]);
   const L = useRef<typeof import("leaflet") | null>(null);
+  // Latest values for Leaflet's event handlers, which are bound once when the map is built.
+  const latest = useRef({ active, dealers, onSelect });
+  latest.current = { active, dealers, onSelect };
+
+  const select = (i: number) => {
+    setActive(i);
+    latest.current.onSelect?.(latest.current.dealers[i]?.name ?? "");
+  };
+
+  const highlight = (i: number) => {
+    const leaflet = L.current;
+    if (!leaflet) return;
+    markers.current.forEach((mk, j) => {
+      const on = j === i;
+      mk.setIcon(leaflet.divIcon({ className: "", html: pin(j + 1, on), iconSize: on ? [31, 38] : [26, 32], iconAnchor: on ? [15.5, 38] : [13, 32] }));
+      mk.setZIndexOffset(on ? 1000 : 0);
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -44,10 +63,11 @@ export default function ShopFinder({ origin, onSelect }: { origin: LatLng; onSel
         title: "You",
       }).addTo(m);
       markers.current = dealers.map((d, i) =>
-        leaflet.marker([d.lat, d.lng], { icon: leaflet.divIcon({ className: "", html: pin(i + 1, i === 0), iconSize: [26, 32], iconAnchor: [13, 32] }), title: d.name })
-          .on("click", () => setActive(i))
+        leaflet.marker([d.lat, d.lng], { title: d.name })
+          .on("click", () => select(i))
           .addTo(m),
       );
+      highlight(latest.current.active); // the user may have clicked a row while Leaflet loaded
       m.fitBounds(leaflet.latLngBounds([[origin.lat, origin.lng], ...dealers.map((d) => [d.lat, d.lng] as [number, number])]), { padding: [28, 28] });
       map.current = m;
     });
@@ -56,19 +76,12 @@ export default function ShopFinder({ origin, onSelect }: { origin: LatLng; onSel
       map.current?.remove();
       map.current = null;
     };
-  }, [origin.lat, origin.lng]);
+  }, [dealers, origin.lat, origin.lng]);
 
   useEffect(() => {
-    const leaflet = L.current;
-    if (!leaflet) return;
-    markers.current.forEach((mk, i) => {
-      const on = i === active;
-      mk.setIcon(leaflet.divIcon({ className: "", html: pin(i + 1, on), iconSize: on ? [31, 38] : [26, 32], iconAnchor: on ? [15.5, 38] : [13, 32] }));
-      mk.setZIndexOffset(on ? 1000 : 0);
-    });
+    highlight(active);
     if (dealers[active]) map.current?.panTo([dealers[active].lat, dealers[active].lng], { animate: true });
-    onSelect?.(dealers[active]?.name ?? "");
-  }, [active]);
+  }, [active, dealers]);
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
@@ -77,9 +90,9 @@ export default function ShopFinder({ origin, onSelect }: { origin: LatLng; onSel
       <ol className="space-y-1.5">
         {dealers.map((d, i) => (
           <li key={d.name}>
-            <div onClick={() => setActive(i)} onMouseEnter={() => setActive(i)}
+            <div onClick={() => select(i)}
               className={`flex w-full cursor-pointer items-start gap-3 rounded-xl border px-3 py-2 text-left transition ${i === active ? "border-neutral-900 bg-white shadow-sm" : "border-neutral-200 hover:border-neutral-400"}`}>
-              <button onClick={() => setActive(i)} aria-label={`Show ${d.name} on the map`}
+              <button onClick={(e) => { e.stopPropagation(); select(i); }} aria-label={`Show ${d.name} on the map`}
                 className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${i === active ? "bg-[#EB0A1E]" : "bg-neutral-800"} ${ring}`}>{i + 1}</button>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14px] font-bold">{d.name}</span>
