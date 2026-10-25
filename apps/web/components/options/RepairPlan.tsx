@@ -93,9 +93,9 @@ export default function RepairPlan({ result, profile }: { result: Analysis; prof
 
         <section aria-labelledby="fund-title" className="relative overflow-hidden rounded-2xl border border-neutral-200 px-5 py-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/advisor/guide-placeholder.png" alt="" className="absolute -right-2 bottom-0 h-20 w-20 object-contain mix-blend-multiply" />
-          <h2 id="fund-title" className="pr-16 text-[18px] font-extrabold leading-tight">A little now. Your next car later.</h2>
-          <p className="pr-16 text-[14px] text-neutral-700">Set aside {money(monthly)}/mo toward a {money(target)} down payment.</p>
+          <img src="/advisor/guide-savings.png" alt="" className="absolute bottom-1 right-2 h-[104px] w-[96px] object-contain mix-blend-multiply" />
+          <h2 id="fund-title" className="pr-24 text-[18px] font-extrabold leading-tight">A little now. Your next car later.</h2>
+          <p className="pr-24 text-[14px] text-neutral-700">Set aside {money(monthly)}/mo toward a {money(target)} down payment.</p>
           <p className="text-[12px] text-neutral-500">Simulated savings account · Connected bank</p>
           {fund ? (
             <p role="status" className="mt-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[14px] font-bold text-emerald-800">
