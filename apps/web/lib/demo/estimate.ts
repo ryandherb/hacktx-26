@@ -219,6 +219,13 @@ export function offlineCustomAnalysis(c: CustomProfile, quote: CostQuoteResult |
       trade: { brief: `A ${best.name} for about ${money(best.monthly_cost)} a month.`, details: `${money(best.down_payment)} down, then ${money(best.new_payment)} a month for 60 months after your ${money(carValue)} trade-in.${tradeAffordable ? "" : ` That's more than the ${money(maxPayment)} a month your budget comfortably allows.`}` },
       refinance: { brief: p.loan_balance ? `Refinance your loan: about ${money(refinance)} a month.` : "No car loan to refinance.", details: p.loan_balance ? `Your ${money(p.loan_balance)} balance re-spread over 60 months at ${(apr * 100).toFixed(1)}% APR is ${money(refiPayment)} a month.` : "Refinancing only helps when there's a loan on the car." },
     },
+    option_notes: {
+      keep: { available: true, pros: ["No new loan", `About ${money(keep)} a month`], cons: [`${money(repairCost)} up front for the repair`] },
+      trade: { available: true, pros: [`A new ${best.name}`, `${money(carValue)} trade-in toward it`], cons: [`${money(best.new_payment)} a month for 60 months`, ...(tradeAffordable ? [] : ["More than your budget comfortably allows"])] },
+      refinance: p.loan_balance
+        ? { available: true, pros: [`Lower payment: ${money(refiPayment)} a month`], cons: ["Still pay for the repair", "Longer loan term"] }
+        : { available: false, pros: [], cons: [] },
+    },
     repair: quote?.repair ?? null,
     car_value: carValue,
     explanation: `${summary} Estimates, not financial advice.`,
