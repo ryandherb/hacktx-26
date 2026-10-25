@@ -10,6 +10,7 @@ export type Profile = {
   loan_balance: number;
   monthly_payment: number;
   open_issue: string | null;
+  insurance_premium?: number | null;
 };
 
 export type CurvePoint = { month: number; keep_cost: number; replace_cost: number };
