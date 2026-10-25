@@ -43,7 +43,14 @@ def analyze(req: AnalysisRequest):
     afford = affordability.compute(nessie.get_snapshot(profile))
     mkt = serpapi.get_market_data(profile)
     curve, crossover, rec = simulate.run(profile, mkt, afford, req)
-    explanation = llm.explain({"crossover_month": crossover, "recommendation": rec})
+    explanation = llm.explain(
+        {
+            "crossover_month": crossover,
+            "recommendation": rec,
+            "affordability": afford,
+            "horizon_months": req.horizon_months,
+        }
+    )
     return AnalysisResult(
         profile_id=profile.id,
         curve=curve,

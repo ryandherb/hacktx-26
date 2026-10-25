@@ -13,9 +13,13 @@ class Settings(BaseSettings):
 
     serpapi_api_key: str = ""
 
+    # LLM (OpenAI-compatible chat completions). LLM_PROVIDER=none uses templates only.
+    # LLM_BASE_URL overrides the provider's default URL (see app/clients/llm.py).
     llm_provider: str = "none"
     llm_api_key: str = ""
     llm_model: str = ""
+    llm_base_url: str = ""
+    llm_timeout_seconds: float = 20.0
 
     database_url: str = "sqlite:///./cache.sqlite3"
     web_origin: str = "http://localhost:3000"
