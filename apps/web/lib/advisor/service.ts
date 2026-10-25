@@ -34,6 +34,9 @@ export function backendReachable(): boolean {
 
 // Runs a live call with a timeout. Network failures and timeouts return null (-> offline
 // snapshot); HTTP errors from a reachable backend are real problems and are thrown.
+// Timeouts are short enough for a live presentation: if the backend is slow (e.g. Render's free
+// tier waking up), the page shows the saved sample results instead of stalling. Normal responses
+// take well under 5s; the backend caps the Muse explanation at 10s and falls back to its template.
 async function live<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T | null> {
   if (!backendReachable()) return null;
   const ctrl = new AbortController();
@@ -53,7 +56,7 @@ async function live<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): P
 type VehicleFacts = { vehicle_model: string; vehicle_year: number; zip_code: string };
 
 export async function submitProblem(profileId: string, text: string, vehicle: VehicleFacts): Promise<Served<PreQuoteSurveyResult>> {
-  const r = await live((signal) => api.preQuoteSurvey({ profile_id: profileId, answers: { repair_type: text } }, { signal }), 5000);
+  const r = await live((signal) => api.preQuoteSurvey({ profile_id: profileId, answers: { repair_type: text } }, { signal }), 10000);
   if (r) return { data: r, mocked: false };
   // Offline: same shape the survey returns for a complete profile, with the text the user typed.
   const quote_input = { repair_type: text, vehicle_model: vehicle.vehicle_model, vehicle_year: vehicle.vehicle_year, location: vehicle.zip_code };

@@ -6,8 +6,10 @@ OpenAI-compatible chat completions API (Meta Muse, OpenAI, Groq, OpenRouter, Gem
 endpoint, ...). Configure it with LLM_PROVIDER, LLM_API_KEY and optionally LLM_MODEL,
 LLM_BASE_URL, LLM_REASONING_EFFORT and LLM_MAX_TOKENS.
 
-`explain` falls back to a deterministic template when USE_FIXTURES=true, LLM_PROVIDER=none,
-LLM_API_KEY is empty, the request fails, or the reply contains a number it wasn't given.
+`explain` uses the LLM whenever a provider and key are set (USE_FIXTURES only controls demo
+data, not the LLM). It falls back to a deterministic template when LLM_PROVIDER=none,
+LLM_API_KEY is empty, the request fails or times out, the reply isn't usable JSON, or the reply
+contains a number it wasn't given. Each of the two texts (summary, details) falls back on its own.
 """
 
 import json
@@ -15,6 +17,7 @@ import logging
 from dataclasses import dataclass
 import math
 import re
+import time
 from typing import Any
 
 import httpx
@@ -27,6 +30,9 @@ DISCLAIMER = (
     "Prices and recommendations are estimates built on synthetic data, not financial advice."
 )
 SHORT_DISCLAIMER = "Estimates, not financial advice."
+# /analyze waits at most this long for the written explanation, then uses the template, so the
+# results page never stalls on the LLM (the frontend gives /analyze 20s in total).
+EXPLAIN_TIMEOUT_SECONDS = 10.0
 
 # Default base URLs per provider. Anything else needs LLM_BASE_URL.
 DEFAULT_BASE_URLS = {
@@ -148,8 +154,13 @@ def _complete(
     system: str | None = None,
     temperature: float = 0.2,
     max_tokens: int | None = None,
+    timeout: float | None = None,
 ) -> str:
-    """Send one chat completion request and return the reply text. Raises LLMError."""
+    """Send one chat completion request and return the reply text. Raises LLMError.
+
+    Transient failures are retried, then the fallback models are tried. `timeout` caps the
+    total time across all of that (used by explain() so /analyze never stalls on the LLM).
+    """
     s = get_settings()
     if not llm_configured():
         raise LLMError(f"LLM provider '{s.llm_provider}' is not configured")
@@ -173,8 +184,16 @@ def _complete(
 
     url = _chat_url()
     last_error: Exception | None = None
+    # `timeout` (if given) is a total budget across all retries and fallback models.
+    deadline = time.monotonic() + timeout if timeout else None
     for candidate in _models(model):
         for _ in range(ATTEMPTS_PER_MODEL):
+            attempt_timeout = s.llm_timeout_seconds
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0.5:
+                    raise LLMError(f"LLM time budget of {timeout}s used up: {last_error}")
+                attempt_timeout = min(attempt_timeout, remaining)
             try:
                 r = httpx.post(
                     url,
@@ -183,7 +202,7 @@ def _complete(
                         "Content-Type": "application/json",
                     },
                     json={"model": candidate, **body},
-                    timeout=s.llm_timeout_seconds,
+                    timeout=attempt_timeout,
                 )
                 r.raise_for_status()
                 return _content_from_response(r.json())
@@ -533,8 +552,16 @@ def _invented_numbers(text: str, facts: dict) -> list[str]:
     return bad
 
 
-def _llm_enabled_for_explain() -> bool:
-    return llm_configured() and not get_settings().use_fixtures
+def _reply_object(reply: str) -> dict:
+    """The JSON object in an LLM reply, tolerating code fences or stray prose around it."""
+    text = _strip_code_fence(reply)
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end <= start:
+        raise ValueError("no JSON object in reply")
+    data = json.loads(text[start : end + 1])
+    if not isinstance(data, dict):
+        raise ValueError("reply is not a JSON object")
+    return data
 
 
 def _checked(text: Any, facts: dict, fallback: str, disclaimer: str, label: str) -> str:
@@ -563,7 +590,7 @@ def explain(context: dict) -> Explanation:
     """
     facts = _build_facts(context)
     fallback = _template(facts)
-    if not _llm_enabled_for_explain():
+    if not llm_configured():
         return fallback
 
     try:
@@ -571,10 +598,9 @@ def explain(context: dict) -> Explanation:
             "Explain this result. Facts (JSON):\n" + json.dumps(facts, default=str),
             system=EXPLAIN_SYSTEM_PROMPT,
             max_tokens=max(get_settings().llm_max_tokens, 1500),
+            timeout=EXPLAIN_TIMEOUT_SECONDS,
         )
-        data = json.loads(_strip_code_fence(reply))
-        if not isinstance(data, dict):
-            raise ValueError("reply is not a JSON object")
+        data = _reply_object(reply)
     except (LLMError, ValueError) as e:
         log.warning("explain: falling back to template (%s)", e)
         return fallback
