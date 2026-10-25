@@ -49,7 +49,7 @@ export default function SituationStep({ profileId, state, update }: Props) {
   const cardHasInput = fields.some((f) => { const v = a[f]; return Array.isArray(v) ? v.length > 0 : v != null; });
 
   const [title, sub] = TITLES[card];
-  const back = () => (index === 0 ? update({ step: "problem" }) : go(index - 1));
+  const back = () => (index === 0 ? update({ step: state.quote ? "estimate" : "problem" }) : go(index - 1));
   const next = () => (card === "review" ? update({ step: "options" }) : go(index + 1));
 
   const demo = card === "review" || card === "bank" ? null : (
@@ -114,7 +114,7 @@ export default function SituationStep({ profileId, state, update }: Props) {
           <div>
             <div className="flex items-center justify-between gap-6">
               <span className="text-lg font-bold">Cash available</span>
-              <div className="w-44"><MoneyInput label="" value={a.down_payment} onChange={(v) => set({ down_payment: v == null ? null : Math.min(v, 999999) })} /></div>
+              <div className="w-44"><MoneyInput label="" ariaLabel="Cash available in dollars" value={a.down_payment} onChange={(v) => set({ down_payment: v == null ? null : Math.min(v, 999999) })} /></div>
             </div>
             <input type="range" min={0} max={DOWN_PAYMENT_MAX} step={250} value={Math.min(a.down_payment ?? 0, DOWN_PAYMENT_MAX)}
               onChange={(e) => set({ down_payment: Number(e.target.value) })} aria-label="Cash available"
@@ -165,7 +165,7 @@ function Review({ a, cards, go, bank }: { a: SituationAnswers; cards: CardId[]; 
         <div key={id} className="flex items-center gap-3 py-1.5 text-[15px] sm:gap-6">
           <dt className="w-24 shrink-0 text-neutral-600 sm:w-36">{k}</dt>
           <dd className="min-w-0 flex-1 font-bold">{v}</dd>
-          <button onClick={() => go(Math.max(cards.indexOf(id), 0))} className={`-mr-2 px-2.5 text-sm max-md:min-h-11 underline underline-offset-2 hover:text-[#EB0A1E] ${ring}`}>Edit</button>
+          <button onClick={() => go(Math.max(cards.indexOf(id), 0))} aria-label={`Edit ${k.toLowerCase()}`} className={`-mr-2 px-2.5 text-sm max-md:min-h-11 underline underline-offset-2 hover:text-[#EB0A1E] ${ring}`}>Edit</button>
         </div>
       ))}
     </dl>
@@ -234,7 +234,7 @@ function BankCard({ state, update, cash, setCash }: BankCardProps) {
           <p className="text-[12px] text-neutral-600">Savings minus a one-month cushion. Edit if needed.</p>
         </div>
         <div className="w-36 shrink-0 [&_label>span:first-child]:hidden [&_label>span:last-child]:mt-0 [&_label>span:last-child]:bg-white">
-          <MoneyInput label="" value={cash} onChange={(v) => setCash(v == null ? null : Math.min(v, 999999))} />
+          <MoneyInput label="" ariaLabel="Available for a repair or down payment, in dollars" value={cash} onChange={(v) => setCash(v == null ? null : Math.min(v, 999999))} />
         </div>
       </div>
     </div>

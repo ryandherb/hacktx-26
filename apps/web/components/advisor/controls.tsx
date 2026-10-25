@@ -28,13 +28,15 @@ export function TogglePill({ label, on, onClick }: { label: string; on: boolean;
   );
 }
 
-export function MoneyInput({ label, value, onChange, suffix }: { label: string; value: number | null; onChange: (v: number | null) => void; suffix?: string }) {
+// `label` is the visible caption; when a layout hides it (label=""), pass `ariaLabel` so the
+// field still has a name for screen readers.
+export function MoneyInput({ label, ariaLabel, value, onChange, suffix }: { label: string; ariaLabel?: string; value: number | null; onChange: (v: number | null) => void; suffix?: string }) {
   return (
     <label className="block">
       <span className="text-[15px] font-bold">{label}</span>
       <span className="mt-2 flex items-center rounded-lg border border-neutral-300 px-4 focus-within:border-neutral-800 focus-within:ring-1 focus-within:ring-neutral-800">
         <span className="text-lg text-neutral-500">$</span>
-        <input inputMode="numeric" value={value ?? ""} placeholder="0"
+        <input inputMode="numeric" value={value ?? ""} placeholder="0" aria-label={label ? undefined : ariaLabel}
           onChange={(e) => { const n = e.target.value.replace(/[^\d]/g, ""); onChange(n ? Number(n) : null); }}
           className="w-full min-w-0 bg-transparent px-2 py-3.5 text-lg outline-none" />
         {suffix && <span className="whitespace-nowrap text-neutral-500">{suffix}</span>}

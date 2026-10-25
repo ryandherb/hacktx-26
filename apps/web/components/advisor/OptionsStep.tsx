@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Analysis } from "@/lib/api";
 import { getOptions, OPTION_LABELS, type OptionsInputs } from "@/lib/advisor/service";
+import { resultsNote } from "@/lib/advisor/results";
 import { ring } from "./AdvisorPanel";
 import { StepLayout } from "./controls";
 import StepFooter from "./StepFooter";
@@ -14,7 +15,7 @@ type Props = {
   inputs: OptionsInputs;
   onBack: () => void;
   onStartOver: () => void;
-  onResult: (r: Analysis, mocked: boolean) => void;
+  onResult: (r: Analysis, mocked: boolean, preset: boolean) => void;
   onView: () => void;
 };
 
@@ -22,6 +23,7 @@ type Props = {
 export default function OptionsStep({ profileId, inputs, onBack, onStartOver, onResult, onView }: Props) {
   const [result, setResult] = useState<Analysis | null>(null);
   const [mocked, setMocked] = useState(false);
+  const [preset, setPreset] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [stage, setStage] = useState(0);
@@ -36,7 +38,11 @@ export default function OptionsStep({ profileId, inputs, onBack, onStartOver, on
     setStage(0);
     const timer = setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 650);
     getOptions(profileId, inputsRef.current)
-      .then((r) => { if (live) { setResult(r.data); setMocked(r.mocked); onResultRef.current(r.data, r.mocked); } })
+      .then((r) => {
+        if (!live) return;
+        setResult(r.data); setMocked(r.mocked); setPreset(!!r.preset);
+        onResultRef.current(r.data, r.mocked, !!r.preset);
+      })
       .catch((e) => { if (live) setError(e instanceof Error ? e.message : "Something went wrong."); })
       .finally(() => clearInterval(timer));
     return () => { live = false; clearInterval(timer); };
@@ -92,7 +98,7 @@ export default function OptionsStep({ profileId, inputs, onBack, onStartOver, on
           className={`mt-6 inline-flex items-center gap-3 rounded-full bg-[#EB0A1E] px-10 py-4 xl:px-14 text-xl font-bold text-white shadow-[0_10px_28px_rgba(235,10,30,0.3)] hover:bg-[#c8091a] ${ring}`}>
           View your options <span aria-hidden>→</span>
         </button>
-        {mocked && <p className="mt-3 text-[11px] text-neutral-500">Demo profile: preset results.</p>}
+        {resultsNote(mocked, preset) && <p className="mt-3 max-w-sm text-[11px] text-neutral-500">{resultsNote(mocked, preset)}</p>}
       </div>
     </StepLayout>
   );

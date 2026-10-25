@@ -207,7 +207,7 @@ export default function Dashboard() {
                       inputs={{ quote: advisor.state.quote, quoteMocked: advisor.state.quoteMocked, situation: advisor.state.situation, availableCash: advisor.state.bank?.availableCash ?? null }}
                       onBack={() => advisor.update({ step: "situation" })}
                       onStartOver={() => { restart(); advisor.update({ view: "open" }); }}
-                      onResult={(options, optionsMocked) => advisor.update({ options, optionsMocked })}
+                      onResult={(options, optionsMocked, optionsPreset) => advisor.update({ options, optionsMocked, optionsPreset })}
                       onView={() => advisor.update({ optionsPage: true })} />
                   )}
                 </AdvisorPanel>
@@ -218,7 +218,7 @@ export default function Dashboard() {
           </div>
           <div className={`w-1/3 overflow-y-auto px-6 md:px-14 ${optionsPage && !planPage ? "" : "max-md:h-0"}`} inert={!optionsPage || planPage}>
             <OptionsPage open={optionsPage && !planPage} vehicleLabel={`${title} ${d.trim}`} car={profile.vehicle_model}
-              result={advisor.state.options} mocked={advisor.state.optionsMocked}
+              result={advisor.state.options} mocked={advisor.state.optionsMocked} preset={advisor.state.optionsPreset}
               onBack={() => advisor.update({ optionsPage: false, planPage: false })} onViewPlan={() => advisor.update({ planPage: true })} />
           </div>
           <div className={`w-1/3 overflow-y-auto px-6 md:px-14 ${planPage ? "" : "max-md:h-0"}`} inert={!planPage}>

@@ -2,10 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Analysis } from "@/lib/api";
-import { keyNumbers, optionCards, planButton, verdict, type OptionCard } from "@/lib/advisor/results";
+import { keyNumbers, optionCards, planButton, resultsNote, verdict, type OptionCard } from "@/lib/advisor/results";
 
 const ring = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#EB0A1E]";
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
+
+const Chevron = ({ open }: { open: boolean }) => (
+  <svg viewBox="0 0 12 12" aria-hidden className={`h-3 w-3 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}>
+    <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 type Props = {
   open: boolean;
@@ -13,6 +19,7 @@ type Props = {
   car: string; // short model name for the headline, e.g. "Camry"
   result: Analysis | null;
   mocked: boolean;
+  preset: boolean;
   onBack: () => void;
   onViewPlan: () => void;
 };
@@ -21,7 +28,7 @@ type Props = {
 // each option with its brief and a "Why?" drop-down for the detailed explanation, the numbers
 // behind the decision, and a drop-down with the full explanation. The recommended option's
 // button slides on to its plan.
-export default function OptionsPage({ open, vehicleLabel, car, result, mocked, onBack, onViewPlan }: Props) {
+export default function OptionsPage({ open, vehicleLabel, car, result, mocked, preset, onBack, onViewPlan }: Props) {
   const heading = useRef<HTMLHeadingElement>(null);
   const [explanation, setExplanation] = useState(false);
 
@@ -58,9 +65,9 @@ export default function OptionsPage({ open, vehicleLabel, car, result, mocked, o
           {result.explanation_details && (
             <>
               <button onClick={() => setExplanation((v) => !v)} aria-expanded={explanation} aria-controls="full-explanation"
-                className={`mt-1 inline-flex items-center gap-1.5 text-[15px] font-semibold text-black underline underline-offset-4 ${ring}`}>
-                {explanation ? "Hide the full explanation" : "Read the full explanation"}
-                <span aria-hidden className={`inline-block no-underline transition-transform ${explanation ? "rotate-180" : ""}`}>⌄</span>
+                className={`mt-1 inline-flex items-center gap-1.5 text-[15px] font-semibold text-black max-md:min-h-11 ${ring}`}>
+                <span className="underline underline-offset-4">{explanation ? "Hide the full explanation" : "Read the full explanation"}</span>
+                <Chevron open={explanation} />
               </button>
               <p id="full-explanation" hidden={!explanation} className="mt-1.5 max-w-[720px] text-[14px] leading-relaxed text-neutral-700">
                 {result.explanation_details}
@@ -84,14 +91,14 @@ export default function OptionsPage({ open, vehicleLabel, car, result, mocked, o
           {numbers.map((n) => (
             <div key={n.label} className="flex flex-col-reverse pr-4 md:px-5 md:first:pl-0">
               <dt className={`text-[13px] ${n.warn ? "font-semibold text-[#c8091a]" : "text-neutral-500"}`}>{n.label}</dt>
-              <dd className={`text-[24px] font-extrabold leading-tight tracking-tight ${n.warn ? "text-[#c8091a]" : ""}`}>{n.value}</dd>
+              <dd className={`text-[20px] font-extrabold leading-tight tracking-tight sm:text-[24px] ${n.warn ? "text-[#c8091a]" : ""}`}>{n.value}</dd>
             </div>
           ))}
         </dl>
       </section>
 
       <p className="mt-auto border-t border-neutral-200 pt-2.5 text-right text-xs text-neutral-500 max-md:mt-4 max-md:text-left">
-        Estimates, not financial advice.{mocked && " Demo profile: preset results."}
+        Estimates, not financial advice.{resultsNote(mocked, preset) && ` ${resultsNote(mocked, preset)}`}
       </p>
 
     </div>
@@ -122,8 +129,8 @@ function Card({ card }: { card: OptionCard }) {
       {card.details && (
         <div className="mt-auto border-t border-neutral-200 pt-1.5">
           <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls={id}
-            className={`mt-1 inline-flex items-center gap-1.5 text-[15px] font-bold ${ring}`}>
-            Why? <span aria-hidden className={`inline-block transition-transform ${open ? "rotate-180" : ""}`}>⌄</span>
+            className={`mt-1 inline-flex items-center gap-1.5 text-[15px] font-bold max-md:min-h-11 max-md:w-full ${ring}`}>
+            Why? <Chevron open={open} />
           </button>
           <p id={id} hidden={!open} className="mt-1 text-[13px] leading-relaxed text-neutral-700">{card.details}</p>
         </div>

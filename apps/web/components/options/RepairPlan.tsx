@@ -38,10 +38,10 @@ export default function RepairPlan({ result, profile }: { result: Analysis; prof
 
   return (
     <div className="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]">
-      <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3 max-lg:contents">
         <section aria-label="The repair" className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-neutral-200 px-5 py-3">
           <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center self-start rounded-full bg-emerald-600 text-sm font-bold text-white">✓</span>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 max-sm:basis-[calc(100%-3rem)]">
             <p className="text-[14px] font-semibold text-neutral-600">{isQuote ? "Uploaded mechanic's quote" : "Repair estimate"}</p>
             <p className="text-[22px] font-extrabold leading-tight">{doc?.title ?? r?.label ?? "Repair"}</p>
             {r?.shop && <p className="text-[14px] text-neutral-600">{r.shop}</p>}
@@ -60,7 +60,7 @@ export default function RepairPlan({ result, profile }: { result: Analysis; prof
           <p className="mb-2 text-[13px] text-neutral-500">Nearest Toyota service centers · verify hours before you go</p>
           <ShopFinder origin={zipCenter(profile.zip_code)} />
         </section>
-        <section aria-labelledby="change-title" className="px-1">
+        <section aria-labelledby="change-title" className="px-1 max-lg:order-last">
           <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-1">
             <div>
               <h2 id="change-title" className="text-[15px] font-bold">What would change this?</h2>
@@ -96,7 +96,7 @@ export default function RepairPlan({ result, profile }: { result: Analysis; prof
           <img src="/advisor/guide-savings.png" alt="" className="absolute bottom-1 right-2 h-[104px] w-[96px] object-contain mix-blend-multiply" />
           <h2 id="fund-title" className="pr-24 text-[18px] font-extrabold leading-tight">A little now. Your next car later.</h2>
           <p className="pr-24 text-[14px] text-neutral-700">Set aside {money(monthly)}/mo toward a {money(target)} down payment.</p>
-          <p className="text-[12px] text-neutral-500">Simulated savings account · Connected bank</p>
+          <p className="pr-24 text-[12px] text-neutral-500">Simulated savings account · Connected bank</p>
           {fund ? (
             <p role="status" className="mt-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[14px] font-bold text-emerald-800">
               ✓ Car Fund started · {money(monthly)}/mo{fund.simulated && " (simulated)"}

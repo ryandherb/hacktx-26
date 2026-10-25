@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Next Move",
   description: "Keep, repair, or replace your Toyota, and when you can afford to.",
+  icons: { icon: "/brand/toyota-emblem.png" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

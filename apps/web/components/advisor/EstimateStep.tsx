@@ -181,7 +181,7 @@ export default function EstimateStep({ profile, state, update }: Props) {
               <p className="mt-4 text-[14px] font-bold">What&rsquo;s the total on your quote?</p>
               <p className="text-[13px] text-neutral-600">We can&rsquo;t read quotes automatically yet, so type the total and shop from the PDF.</p>
               <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.4fr]">
-                <MoneyInput label="" value={amount} onChange={(n) => setAmount(n == null ? null : Math.min(n, 100000))} />
+                <MoneyInput label="" ariaLabel="Quote total in dollars" value={amount} onChange={(n) => setAmount(n == null ? null : Math.min(n, 100000))} />
                 <label className="block">
                   <span className="sr-only">Shop name (optional)</span>
                   <input value={shop} onChange={(e) => setShop(e.target.value)} maxLength={200} placeholder="Shop name (optional)"

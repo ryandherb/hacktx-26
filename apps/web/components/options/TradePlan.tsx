@@ -38,7 +38,7 @@ export default function TradePlan({ result, profile }: { result: Analysis; profi
 
   return (
     <div className="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]">
-      <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3 max-lg:contents">
         {/* Hero: the selected pick */}
         <section aria-labelledby="pick-title" className={`grid grid-cols-1 gap-x-5 rounded-2xl border-2 px-5 py-4 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] ${sel === 0 ? "border-[#EB0A1E] shadow-[0_12px_32px_rgba(235,10,30,0.10)]" : "border-neutral-900"}`}>
           <div className="flex min-w-0 flex-col">
@@ -99,7 +99,7 @@ export default function TradePlan({ result, profile }: { result: Analysis; profi
                 ) : <span className="h-[56px] w-[104px] shrink-0 rounded-lg bg-neutral-100" />}
                 <span className="min-w-0 flex-1">
                   <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-neutral-500">{i === 0 ? "Best fit" : "Also fits"} · {KIND[m.kind] ?? m.kind}</span>
-                  <span className="block truncate text-[15px] font-bold">Toyota {model(m)}</span>
+                  <span className="block text-[15px] font-bold sm:truncate">Toyota {model(m)}</span>
                   <span className="block text-[13px] text-neutral-600">
                     <span className="font-bold text-black">{money(m.monthly_cost)}</span>/mo · {m.mpg} MPG
                   </span>
@@ -110,7 +110,7 @@ export default function TradePlan({ result, profile }: { result: Analysis; profi
           </div>
         </section>
 
-        <section aria-labelledby="change-title" className="px-1">
+        <section aria-labelledby="change-title" className="px-1 max-lg:order-last">
           <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-1">
             <div>
               <h2 id="change-title" className="text-[15px] font-bold">What would change this?</h2>

@@ -84,3 +84,10 @@ export function whatWouldChange(a: Analysis): string[] {
   }
   return ["If rates rise before you refinance, the savings shrink.", "A large repair on top of the loan could make trading in the better move."];
 }
+
+// Where the result came from, for the small print next to it (null when scored live).
+export function resultsNote(mocked: boolean, preset: boolean): string | null {
+  if (preset) return "Demo profile: preset results for the demo answers.";
+  if (mocked) return "Sample results: the scoring service isn't reachable, so these come from a saved demo run, not your answers.";
+  return null;
+}

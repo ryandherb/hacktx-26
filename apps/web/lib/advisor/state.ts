@@ -35,11 +35,12 @@ export type AdvisorState = {
   // Results for step 3 (POST /analyze), and whether the full-width options page is slid into view.
   options: Analysis | null;
   optionsMocked: boolean;
+  optionsPreset: boolean; // the saved demo-profile result (answers matched the demo inputs)
   optionsPage: boolean;
   planPage: boolean; // the plan for the recommended option, one slide past the options page
 };
 
-const INITIAL: AdvisorState = { view: "closed", step: "intro", problem: "", survey: null, surveyMocked: false, estimateFileName: null, situation: EMPTY_SITUATION, situationCard: 0, reportedIssue: null, quote: null, quoteMocked: false, manualQuote: null, bank: null, bankSkipped: false, bankModal: false, options: null, optionsMocked: false, optionsPage: false, planPage: false };
+const INITIAL: AdvisorState = { view: "closed", step: "intro", problem: "", survey: null, surveyMocked: false, estimateFileName: null, situation: EMPTY_SITUATION, situationCard: 0, reportedIssue: null, quote: null, quoteMocked: false, manualQuote: null, bank: null, bankSkipped: false, bankModal: false, options: null, optionsMocked: false, optionsPreset: false, optionsPage: false, planPage: false };
 
 export function useAdvisorState() {
   const [state, setState] = useState<AdvisorState>(INITIAL);

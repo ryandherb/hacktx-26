@@ -12,13 +12,16 @@ import type {
   PreQuoteSurveyResult,
   RepairEstimate,
 } from "@/lib/api";
+import { DEMO_SITUATION } from "@/lib/demo/answers";
 import { BANK_FIXTURES, type BankAccount } from "@/lib/demo/bank";
 import snapshotJson from "@/lib/demo/offline-snapshot.json";
 import { toPfoAnswers, type SituationAnswers } from "./situation";
 
 export type { CostQuoteResult, ManualQuote, PreQuoteInput, PreQuoteSurveyResult } from "@/lib/api";
 
-export type Served<T> = { data: T; mocked: boolean };
+// mocked: came from the offline snapshot, not a live call. preset: the saved demo-profile
+// result, used because the answers match that profile's demo inputs.
+export type Served<T> = { data: T; mocked: boolean; preset?: boolean };
 
 type Snapshot = Record<string, { survey: PreQuoteSurveyResult; quote: CostQuoteResult; analysis: Analysis }>;
 const SNAPSHOT = snapshotJson as unknown as Snapshot;
@@ -44,7 +47,9 @@ async function live<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): P
   try {
     return await call(ctrl.signal);
   } catch (e) {
-    if (e instanceof Error && /^\d{3} /.test(e.message)) throw new Error(`Service error ${e.message}`);
+    if (e instanceof Error && /^\d{3} /.test(e.message)) {
+      throw new Error(`Something went wrong on our end (error ${e.message.slice(0, 3)}). Please try again.`);
+    }
     return null; // unreachable or timed out
   } finally {
     clearTimeout(timer);
@@ -110,14 +115,28 @@ export type OptionsInputs = {
   availableCash: number | null; // from the bank step
 };
 
-// Demo profiles always show their preset results (a saved run of the real backend with the
-// demo answers), so the demo tells the same story every time, with or without a backend.
-const PRESET_PROFILES = new Set(["maria", "dev"]);
+// Demo profiles show their preset results (a saved run of the real backend with the demo
+// answers) when the answers match those demo inputs, so the scripted demo tells the same story
+// every time, with or without a backend. Change the repair or an answer that feeds the score
+// and the result is scored live instead, so the page never shows numbers the user didn't enter.
+// The down payment isn't compared: the snapshot assumes the demo preset, the flow uses the bank.
+const PRESET_ANSWER_KEYS = ["life_change", "credit_band", "car_reliance"] as const;
+const same = (a: unknown, b: unknown) =>
+  JSON.stringify(Array.isArray(a) ? [...a].sort() : a) === JSON.stringify(Array.isArray(b) ? [...b].sort() : b);
+
+function usesPresetInputs(profileId: string, inputs: OptionsInputs): boolean {
+  const preset = SNAPSHOT[profileId]?.analysis.repair;
+  const demo = DEMO_SITUATION[profileId];
+  const r = inputs.quote?.repair;
+  if (!preset || !demo || !r) return false;
+  if (r.repair_cost_low !== preset.repair_cost_low || r.repair_cost_high !== preset.repair_cost_high) return false;
+  return PRESET_ANSWER_KEYS.every((k) => same(inputs.situation[k], demo[k]));
+}
 
 export async function getOptions(profileId: string, inputs: OptionsInputs): Promise<Served<Analysis>> {
-  if (PRESET_PROFILES.has(profileId) && SNAPSHOT[profileId]) {
+  if (usesPresetInputs(profileId, inputs)) {
     await new Promise((r) => setTimeout(r, 2600)); // lets the "crunching numbers" screen read naturally
-    return { mocked: true, data: SNAPSHOT[profileId].analysis };
+    return { mocked: true, preset: true, data: SNAPSHOT[profileId].analysis };
   }
   const r = await live(async (signal) => {
     const pfo = await api.onboarding({ answers: toPfoAnswers(inputs.situation, inputs.availableCash) }, { signal });

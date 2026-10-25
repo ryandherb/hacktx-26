@@ -94,7 +94,8 @@ export default function Home() {
               Recommendation: {result.recommendation.replace("_", " ")}
             </h2>
             <p className="mb-4 text-sm">{result.explanation}</p>
-            <CostChart curve={result.curve} crossover={result.crossover_month} />
+            {/* /analyze no longer returns a cost curve (legacy field, empty), so skip the empty chart. */}
+            {result.curve.length > 0 && <CostChart curve={result.curve} crossover={result.crossover_month} />}
           </section>
 
           <div className="grid gap-6 md:grid-cols-2">
