@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { BankSnapshot, CostQuoteResult, ManualQuote, PreQuoteSurveyResult } from "./service";
+import type { BankSnapshot, CostQuoteResult, ManualQuote, OptionsResult, PreQuoteSurveyResult } from "./service";
 import { EMPTY_SITUATION, type SituationAnswers } from "./situation";
 
 // Under the nextmove:v1:assessment prefix so clearAssessment() in lib/demo/session.ts wipes it.
@@ -31,9 +31,13 @@ export type AdvisorState = {
   bank: BankSnapshot | null;
   bankSkipped: boolean;
   bankModal: boolean;
+  // Results for step 3, and whether the full-width options page is slid into view.
+  options: OptionsResult | null;
+  optionsMocked: boolean;
+  optionsPage: boolean;
 };
 
-const INITIAL: AdvisorState = { view: "closed", step: "intro", problem: "", survey: null, surveyMocked: false, estimateFileName: null, situation: EMPTY_SITUATION, situationCard: 0, reportedIssue: null, quote: null, quoteMocked: false, manualQuote: null, bank: null, bankSkipped: false, bankModal: false };
+const INITIAL: AdvisorState = { view: "closed", step: "intro", problem: "", survey: null, surveyMocked: false, estimateFileName: null, situation: EMPTY_SITUATION, situationCard: 0, reportedIssue: null, quote: null, quoteMocked: false, manualQuote: null, bank: null, bankSkipped: false, bankModal: false, options: null, optionsMocked: false, optionsPage: false };
 
 export function useAdvisorState() {
   const [state, setState] = useState<AdvisorState>(INITIAL);

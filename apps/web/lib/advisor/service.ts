@@ -173,6 +173,12 @@ function mockQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: Ma
 
 export type OptionId = "keep_repair" | "trade_in" | "private_sale";
 
+export const OPTION_LABELS: Record<OptionId, [string, string]> = {
+  keep_repair: ["Keep & Repair", "Fix it and keep driving"],
+  trade_in: ["Trade In & Upgrade", "Put this car toward a newer Toyota"],
+  private_sale: ["Private Sale & Refinance", "Sell it yourself and finance a replacement"],
+};
+
 export type OptionsResult = {
   scores: Record<OptionId, number>; // percentages, sum to 100
   explanation: string;
