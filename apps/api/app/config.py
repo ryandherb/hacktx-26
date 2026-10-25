@@ -20,7 +20,14 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 20.0
 
     database_url: str = "sqlite:///./cache.sqlite3"
+    # CORS. WEB_ORIGIN is comma-separated (e.g. the Vercel prod URL + localhost);
+    # WEB_ORIGIN_REGEX also admits matching origins such as Vercel preview deploys.
     web_origin: str = "http://localhost:3000"
+    web_origin_regex: str = r"https://.*\.vercel\.app"
+
+    @property
+    def web_origins(self) -> list[str]:
+        return [o.strip().rstrip("/") for o in self.web_origin.split(",") if o.strip()]
 
 
 @lru_cache
