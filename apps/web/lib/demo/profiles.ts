@@ -12,13 +12,14 @@ export type ProfileDisplay = {
   color: string;
   ownership: string;
   location: string;
-  // PLACEHOLDER: same 2025 Camry image for everyone until real model-year photos are supplied.
   imageSrc: string;
+  // True while the photo is a stand-in rather than the profile's actual model year.
+  imagePlaceholder: boolean;
 };
 
 export const PROFILE_DISPLAY: Record<string, ProfileDisplay> = {
-  maria: { firstName: "Maria", trim: "LE", color: "Barcelona Red Metallic", ownership: "Owned", location: "Austin, TX", imageSrc: "/cars/placeholder.png" },
-  dev: { firstName: "Dev", trim: "LE", color: "Barcelona Red Metallic", ownership: "Owned", location: "Austin, TX", imageSrc: "/cars/placeholder.png" },
+  maria: { firstName: "Maria", trim: "SE", color: "Cypress Pearl", ownership: "Owned", location: "Austin, TX", imageSrc: "/cars/camry-2012.png", imagePlaceholder: false },
+  dev: { firstName: "Dev", trim: "S", color: "Magnetic Gray Metallic", ownership: "Owned", location: "Austin, TX", imageSrc: "/cars/corolla-2010.png", imagePlaceholder: false },
 };
 
 export const displayFor = (p: Profile): ProfileDisplay =>
@@ -29,6 +30,7 @@ export const displayFor = (p: Profile): ProfileDisplay =>
     ownership: p.loan_balance ? "Financed" : "Owned",
     location: p.zip_code,
     imageSrc: "/cars/placeholder.png",
+    imagePlaceholder: true,
   };
 
 // MOCK fallback copy of apps/api/app/seeds/toyota_profiles.json, used only when the API is unreachable.

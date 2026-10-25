@@ -135,7 +135,7 @@ export default function Dashboard() {
             )}
 
             <button onClick={() => setDrawer(true)} className={`relative mt-2 block min-h-[140px] w-full flex-1 rounded-xl ${ring}`} aria-label={`Open vehicle details for ${label}`}>
-              <CarImage src={d.imageSrc} label={label} />
+              <CarImage src={d.imageSrc} label={label} placeholder={d.imagePlaceholder} />
             </button>
 
             <div className="mt-1 flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
