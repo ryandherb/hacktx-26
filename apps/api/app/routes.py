@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.clients import llm, nessie, serpapi
-from app.engine import affordability, simulate
+from app.engine import affordability, krt, simulate, valuation
 from app.models.schemas import (
     AnalysisRequest,
     AnalysisResult,
@@ -40,13 +40,26 @@ def market(profile_id: str):
 @router.post("/analyze", response_model=AnalysisResult)
 def analyze(req: AnalysisRequest):
     profile = _profile_or_404(req.profile_id)
-    afford = affordability.compute(nessie.get_snapshot(profile))
+    snapshot = nessie.get_snapshot(profile)
+    afford = affordability.compute(snapshot)
     mkt = serpapi.get_market_data(profile)
-    curve, crossover, rec = simulate.run(profile, mkt, afford, req)
+    # Cost curve for the chart (placeholder model in simulate.py).
+    curve, crossover, _ = simulate.run(profile, mkt, afford, req)
+
+    # KRT engine: monthly costs for keep / trade / refinance, then the recommendation.
+    repair_cost = valuation.estimated_repair_cost(mkt)
+    pfo = {"down_payment": req.down_payment} if req.down_payment is not None else None
+    result = krt.score(
+        profile, valuation.current_value(mkt), afford, mkt, repair_cost, snapshot, pfo
+    )
+    rec = krt.recommend(result, afford)
+
     explanation = llm.explain(
         {
-            "crossover_month": crossover,
             "recommendation": rec,
+            "krt": result,
+            "repair_cost": repair_cost,
+            "crossover_month": crossover,
             "affordability": afford,
             "horizon_months": req.horizon_months,
         }
@@ -55,6 +68,7 @@ def analyze(req: AnalysisRequest):
         profile_id=profile.id,
         curve=curve,
         crossover_month=crossover,
+        result=result,
         recommendation=rec,
         affordability=afford,
         market=mkt,

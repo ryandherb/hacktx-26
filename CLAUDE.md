@@ -59,9 +59,9 @@ npm run lint
 
 ## Recommendation values
 
-Target enum: `repair` | `trade` | `repair_then_trade`. The scaffold currently returns
-`keep` | `replace_now` | `replace_later`. Migrate both the backend and `lib/api.ts`
-together, plus the assertion in `tests/test_api.py`.
+`keep` | `trade` | `refinance`, chosen by `krt.recommend()` from the monthly costs in
+`KRTResult` (lowest affordable cost; keep wins ties). Keep `schemas.py`, `lib/api.ts`, and
+the assertion in `tests/test_api.py` in sync if this changes.
 
 ## Hackathon
 

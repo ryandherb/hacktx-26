@@ -35,26 +35,42 @@ DEFAULT_BASE_URLS = {
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
 }
 
-# Old scaffold values -> target enum.
+# Recommendation values: "keep" | "trade" | "refinance".
+# Older names from the scaffold and earlier plans map onto them.
 LEGACY_RECOMMENDATIONS = {
-    "keep": "repair",
+    "repair": "keep",
     "replace_now": "trade",
-    "replace_later": "repair_then_trade",
+    "replace_later": "keep",
+    "repair_then_trade": "keep",
 }
 
 EXPLAIN_SYSTEM_PROMPT = f"""You are the Explanation Agent for Next Move, a tool that helps a \
-Toyota owner decide whether to repair their car, trade it in, or repair now and trade later.
+Toyota owner with a repair need decide whether to keep (repair) their car, trade it in for a \
+newer Toyota, or keep it and refinance the loan.
 
 You receive a JSON object with results that were already computed by deterministic code.
 Write a short, friendly, plain-language summary (3 to 5 sentences, no markdown, no lists).
+
+What the fields mean:
+- recommendation: "keep" (repair and keep the car), "trade" (trade it in now), or \
+"refinance" (keep the car and refinance the loan at a lower payment).
+- krt.keepResult, krt.tradeResult, krt.refinanceResult: estimated monthly cost in dollars \
+of each option. Lower is better.
+- krt.repair_pct_of_car_value: the repair cost as a percent of what the car is worth.
+- krt.savings_months_after_repair: months of spending the customer's savings would cover \
+after paying for the repair. Negative means the repair costs more than their savings.
+- krt.remaining_life_pct: percent of the car's expected life left.
+- repair_cost: estimated repair cost in dollars.
+- affordability: the customer's monthly income, spending, savings, surplus, and the largest \
+monthly payment that looks comfortable.
 
 Strict rules:
 - Never compute, estimate, round differently, add up, or invent any number. Only restate \
 numbers exactly as they appear in the JSON. If a number is not in the JSON, do not mention it.
 - Do not change the recommendation. Explain the one you were given.
-- Mention the KRT score (0 = lean repair, 100 = lean trade) if given, the crossover month \
-if given, and the most important factors.
-- If the crossover month is null, say trading does not pay off within the horizon.
+- Lead with the recommendation, then compare the monthly costs, then mention one or two \
+other facts that support it.
+- Only mention crossover_month if the recommendation is "trade".
 - End with this exact sentence: "{DISCLAIMER}"
 """
 
@@ -137,7 +153,7 @@ def _complete(prompt: str, system: str | None = None, temperature: float = 0.2) 
 
 
 def normalize_recommendation(rec: str | None) -> str | None:
-    """Map old scaffold values (keep/replace_now/replace_later) to repair/trade/repair_then_trade."""
+    """Map older names (repair, replace_now, replace_later, ...) to keep/trade/refinance."""
     if rec is None:
         return None
     rec = str(rec).strip().lower()
@@ -162,7 +178,21 @@ def _build_facts(context: dict) -> dict:
     # The full monthly curve is long and invites the LLM to do math. Pass the
     # simulation's own summary fields instead; drop the raw points.
     ctx.pop("curve", None)
+    if isinstance(ctx.get("krt"), dict):
+        ctx["krt"] = _krt_display(ctx["krt"])
     return ctx
+
+
+def _krt_display(krt: dict) -> dict:
+    """KRTResult with ratios turned into ready-to-say values, so the LLM never has to."""
+    out = {k: krt[k] for k in ("keepResult", "tradeResult", "refinanceResult") if k in krt}
+    if isinstance(krt.get("repair_ratio"), (int, float)):
+        out["repair_pct_of_car_value"] = round(krt["repair_ratio"] * 100)
+    if isinstance(krt.get("pr_runway"), (int, float)):
+        out["savings_months_after_repair"] = round(krt["pr_runway"], 1)
+    if isinstance(krt.get("remaining_life"), (int, float)):
+        out["remaining_life_pct"] = round(krt["remaining_life"] * 100)
+    return out
 
 
 def _money(v: Any) -> str:
@@ -191,42 +221,62 @@ def _top_factors(factors: Any, n: int = 3) -> list[dict | str]:
     return sorted(factors, key=weight, reverse=True)[:n]
 
 
+HEADLINES = {
+    "keep": "Repairing and keeping your current car looks like the best move.",
+    "trade": "Trading in now looks like the best move, and a replacement fits your budget.",
+    "refinance": "Keeping your car and refinancing the loan looks like the best move.",
+}
+
+
+def _num(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
 def _template(facts: dict) -> str:
     """Deterministic explanation. Only formats numbers from `facts`; computes nothing."""
     rec = facts.get("recommendation")
-    crossover = facts.get("crossover_month")
-    horizon = facts.get("horizon_months")
-    within = f"within the {horizon}-month horizon" if horizon else "within the horizon"
     parts: list[str] = []
-
-    if rec == "repair":
-        parts.append(
-            "Repairing and keeping your current car looks like the better move; "
-            f"trading in doesn't pay off {within}."
-        )
-    elif rec == "trade":
-        parts.append(
-            "Trading in now looks like the better move; the repair isn't worth it "
-            "and a replacement fits your budget."
-        )
-    elif rec == "repair_then_trade":
-        parts.append(
-            "Repairing now and planning to trade later looks like the better move. "
-            "A Car Fund can help you save for the next car."
-        )
+    if rec in HEADLINES:
+        parts.append(HEADLINES[rec])
 
     score = facts.get("krt_score")
-    if isinstance(score, (int, float)):
+    if _num(score):
         parts.append(f"Your KRT score is {score:g} out of 100 (0 leans repair, 100 leans trade).")
 
-    if crossover is not None:
-        parts.append(f"Trading starts to cost less than keeping around month {crossover}.")
-    elif rec != "repair" and "crossover_month" in facts:
-        parts.append(f"Trading does not pay off {within}.")
+    krt = facts.get("krt") if isinstance(facts.get("krt"), dict) else {}
+    keep, trade, refi = krt.get("keepResult"), krt.get("tradeResult"), krt.get("refinanceResult")
+    if _num(keep) and _num(trade):
+        costs = f"Estimated monthly cost: keeping {_money(keep)}, trading {_money(trade)}"
+        if _num(refi) and refi != keep:  # equal when there's no loan to refinance
+            costs += f", refinancing {_money(refi)}"
+        parts.append(costs + ".")
 
     lo, hi = facts.get("repair_cost_low"), facts.get("repair_cost_high")
-    if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+    if _num(lo) and _num(hi):
         parts.append(f"The repair is estimated at {_money(lo)} to {_money(hi)}.")
+    elif _num(facts.get("repair_cost")):
+        parts.append(f"The repair is estimated at about {_money(facts['repair_cost'])}.")
+
+    pct, runway = krt.get("repair_pct_of_car_value"), krt.get("savings_months_after_repair")
+    if _num(pct):
+        said_cost = parts and parts[-1].startswith("The repair is estimated")
+        lead = "That's" if said_cost else "The repair is"
+        sentence = f"{lead} about {pct:g}% of what the car is worth"
+        if _num(runway):
+            sentence += (
+                ", and it costs more than your current savings"
+                if runway < 0
+                else f", and after paying for it your savings would cover about {runway:g} "
+                f"month{'' if runway == 1 else 's'} of spending"
+            )
+        parts.append(sentence + ".")
+    life = krt.get("remaining_life_pct")
+    if _num(life):
+        parts.append(f"The car has about {life:g}% of its expected life left.")
+
+    crossover = facts.get("crossover_month")
+    if rec == "trade" and crossover is not None:
+        parts.append(f"Trading starts to cost less than keeping around month {crossover}.")
 
     names = [n for n in (_factor_name(f) for f in _top_factors(facts.get("factors"))) if n]
     if names:
@@ -236,14 +286,19 @@ def _template(facts: dict) -> str:
     if isinstance(afford, dict):
         surplus = afford.get("monthly_surplus")
         max_pay = afford.get("max_comfortable_payment")
-        if isinstance(surplus, (int, float)) and isinstance(max_pay, (int, float)):
+        if _num(surplus) and _num(max_pay) and max_pay <= 0:
+            parts.append(
+                f"You have about {_money(surplus)} left over each month, so there's no room "
+                "for a new car payment right now."
+            )
+        elif _num(surplus) and _num(max_pay):
             parts.append(
                 f"You have about {_money(surplus)} left over each month, and a payment up to "
                 f"{_money(max_pay)} looks comfortable."
             )
 
     if not parts:
-        parts.append("Here is a summary of your keep-versus-trade analysis.")
+        parts.append("Here is a summary of your keep, trade, or refinance analysis.")
     parts.append(DISCLAIMER)
     return " ".join(parts)
 
@@ -299,11 +354,11 @@ def _llm_enabled_for_explain() -> bool:
 def explain(context: dict) -> str:
     """Plain-language explanation of a KRT result.
 
-    Expected keys (all optional): `recommendation` (repair | trade | repair_then_trade, or
-    legacy keep | replace_now | replace_later), `krt_score` (0-100), `factors` (list of
-    {name/label, weight, detail} or {name: weight}), `crossover_month`, `horizon_months`,
-    `affordability` (AffordabilityResult or dict), `repair_cost_low`, `repair_cost_high`,
-    and any simulation summary fields. A raw `curve` is dropped.
+    Expected keys (all optional): `recommendation` (keep | trade | refinance; older names
+    are mapped), `krt` (KRTResult or dict), `repair_cost` (or `repair_cost_low` and
+    `repair_cost_high`), `crossover_month`, `horizon_months`, `affordability`
+    (AffordabilityResult or dict), `krt_score` (0-100) and `factors` (list of
+    {name/label, weight, detail} or {name: weight}). A raw `curve` is dropped.
     """
     facts = _build_facts(context)
     if not _llm_enabled_for_explain():

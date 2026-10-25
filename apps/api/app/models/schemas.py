@@ -71,7 +71,7 @@ class PFOFactors(BaseModel):
     windfall_expected: bool = False
     
     payment_risk_tolerance: Literal["low", "medium", "high"] = "unknown"
-    household_members = int | None = 1
+    household_members: int | None = 1
     
     car_usage: Literal["low", "medium", "high"] = "medium"
     
@@ -90,7 +90,7 @@ class AnalysisResult(BaseModel):
     curve: list[CurvePoint]
     crossover_month: int | None
     result: KRTResult
-    reccomendation: str # "keep" | "trade" | "refinance"
+    recommendation: Literal["keep", "trade", "refinance"]
     affordability: AffordabilityResult
     market: MarketData
     explanation: str

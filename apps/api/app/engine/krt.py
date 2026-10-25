@@ -91,3 +91,17 @@ def calculate_average_repair_cost(mileage, car_value):
     price_tier = (car_value / PRICE_TIER_SCALER) ** 0.3
     
     return BASE_REPAIR_COST * wear_drift * price_tier
+
+
+def recommend(result: KRTResult, afford: AffordabilityResult) -> str:
+    """Pick "keep" | "trade" | "refinance": the lowest monthly cost the customer can afford.
+
+    Keep is the default and wins ties. Refinance must be strictly cheaper than keep
+    (with no loan they're equal). Trade needs a payment the customer can afford.
+    """
+    options = [("keep", result.keepResult)]
+    if result.refinanceResult < result.keepResult:
+        options.append(("refinance", result.refinanceResult))
+    if afford.can_afford_payment and result.tradeResult < result.keepResult:
+        options.append(("trade", result.tradeResult))
+    return min(options, key=lambda o: o[1])[0]  # min keeps the first on ties

@@ -28,6 +28,7 @@ export type Affordability = {
 export type Market = {
   current_vehicle_value_low: number;
   current_vehicle_value_high: number;
+  scheduled_maintenance: { cost: number; interval: number }[];
   replacement_options: { name: string; price: number; kind: string }[];
   repair_quotes: { shop: string; estimate: number; source: string }[];
 };
@@ -36,14 +37,17 @@ export type KRTResult = {
   keepResult: number;
   refinanceResult: number;
   tradeResult: number;
-}
+  repair_ratio: number;
+  pr_runway: number;
+  remaining_life: number;
+};
 
 export type Analysis = {
   profile_id: string;
   curve: CurvePoint[];
   crossover_month: number | null;
-  result: KRTResult
-  recommendation: "keep" | "replace_now" | "replace_later";
+  result: KRTResult;
+  recommendation: "keep" | "trade" | "refinance";
   affordability: Affordability;
   market: Market;
   explanation: string;

@@ -65,13 +65,12 @@ repair issue ──> 1. Cost Agent ──> 2. PFO Agent ──> 3. KRT Engine �
 
 | Value | Meaning |
 |---|---|
-| `repair` | Fix it and keep the car; trading in doesn't pay off within the horizon |
-| `trade` | Trade in now; the repair isn't worth it and a replacement is affordable |
-| `repair_then_trade` | Fix it now, start a Car Fund, and plan to trade later |
+| `keep` | Repair it and keep the car; it's the cheapest option per month |
+| `trade` | Trade in now; it's cheapest per month and the payment is affordable |
+| `refinance` | Keep the car and refinance the loan to lower the monthly cost |
 
-> The current scaffold still returns `keep` / `replace_now` / `replace_later` from
-> `simulate.py`. Rename these to the values above when building the KRT engine, and update
-> `apps/web/lib/api.ts` to match.
+`krt.recommend()` picks the option with the lowest monthly cost from `krt.score()`, only
+allowing `trade` when the customer can afford a payment. Ties go to `keep`.
 
 ## Layout
 
