@@ -147,14 +147,17 @@ export type OptionsInputs = {
 
 export async function getOptions(profileId: string, inputs: OptionsInputs): Promise<Served<Analysis>> {
   const c = custom(profileId);
-  const r = await live(async (signal) => {
+  // A backend deployed before custom_profile support answers the judge's profile with 404;
+  // show the offline estimate instead of an error (the seeded profiles still surface errors).
+  const call = c ? <T,>(p: Promise<T>) => p.catch(() => null) : <T,>(p: Promise<T>) => p;
+  const r = await call(live(async (signal) => {
     const pfo = await api.onboarding({ answers: toPfoAnswers(inputs.situation, inputs.availableCash) }, { signal });
     // Send the user's quote only if it's a complete, live one; otherwise the backend quotes
     // the profile's open issue itself. The judge's profile always sends a complete quote,
     // since its open issue is optional.
     const quote = inputs.quote?.complete && (!inputs.quoteMocked || !!c) ? inputs.quote : null;
     return api.analyze(profileId, { quote, pfo_factors: pfo.factors, custom_profile: c && customProfileIn(c) }, { signal });
-  }, 10000);
+  }, 10000));
   if (r) return { data: r, mocked: false };
   if (c) return { mocked: true, data: offlineCustomAnalysis(c, inputs.quote, offlinePfo(inputs)) };
   return { mocked: true, data: snapshotFor(profileId).analysis };
