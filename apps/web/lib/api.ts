@@ -59,7 +59,7 @@ export type KRTResult = {
   refi_payment: number;
   suggested_models: SuggestedModel[];
   trade_affordable: boolean;
-}
+};
 
 export type PFOFactors = {
   apr?: number | null;
@@ -73,17 +73,22 @@ export type PFOFactors = {
   household_members?: number | null;
   car_usage?: "low" | "medium" | "high";
   credit_confidence?: "low" | "medium" | "high";
-}
+};
 
 export type Analysis = {
   profile_id: string;
-  curve: CurvePoint[];
+  recommendation: "keep" | "trade" | "refinance";
+  result: KRTResult;
+  new_monthly_payment: number;
+  suggested_models: SuggestedModel[] | null; // only when recommendation === "trade"
+  apr: number | null;
+  down_payment: number | null;
+  affordability: Affordability; // always set by /analyze
+  market: Market; // always set by /analyze
+  explanation: string; // short summary for the results card
+  explanation_details: string; // longer version for the "more details" drop-down
+  curve: CurvePoint[]; // legacy chart data; empty now
   crossover_month: number | null;
-  result: KRTResult
-  recommendation: "keep" | "replace_now" | "replace_later";
-  affordability: Affordability;
-  market: Market;
-  explanation: string;
 };
 
 export type CarFund = {
