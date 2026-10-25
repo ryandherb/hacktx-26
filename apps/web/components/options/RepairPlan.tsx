@@ -5,6 +5,7 @@ import type { Analysis, Profile } from "@/lib/api";
 import { startCarFund } from "@/lib/advisor/service";
 import { whatWouldChange } from "@/lib/advisor/results";
 import { SAMPLE_QUOTE_DOCS } from "@/lib/demo/answers";
+import { carPhoto } from "@/lib/demo/carPhotos";
 import { zipCenter } from "@/lib/demo/shops";
 import ShopFinder from "@/components/advisor/ShopFinder";
 
@@ -112,7 +113,12 @@ export default function RepairPlan({ result, profile }: { result: Analysis; prof
           <section aria-labelledby="later-title" className="rounded-2xl border border-neutral-200 px-5 py-3">
             <h2 id="later-title" className="text-[18px] font-extrabold">When your income returns</h2>
             <div className="mt-1.5 flex gap-4">
-              <div className="flex h-[76px] w-[120px] shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-[11px] text-neutral-500">Photo coming</div>
+              {carPhoto(later.name) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={carPhoto(later.name)!} alt={`Toyota ${later.name}`} className="h-[76px] w-[140px] shrink-0 object-contain" />
+              ) : (
+                <div className="flex h-[76px] w-[140px] shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-[11px] text-neutral-500">Photo coming</div>
+              )}
               <div className="min-w-0">
                 <p className="text-[12px] text-neutral-500">{[KIND[later.kind] ?? later.kind, later.name.match(/^\d{4}/)?.[0]].filter(Boolean).join(" · ")}</p>
                 <p className="font-bold leading-tight">Toyota {later.name.replace(/^\d{4} /, "")}</p>
