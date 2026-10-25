@@ -21,15 +21,16 @@ def test_score_returns_monthly_costs():
     assert r.refinanceResult == r.keepResult  # no loan to refinance
 
 
-def test_trade_cost_includes_insurance_increase():
+def test_trade_cost_is_best_pick_with_insurance_and_fuel():
     p, m = get_profile("maria"), _market("maria")
     snap = load_fixture("nessie")["maria"]
-    price = valuation.default_replacement(m)["price"]
-    down = krt.DEFAULT_DOWN_PCT * price
-    loan = krt.loan_payment(price - down - 4900, krt.DEFAULT_APR, krt.LOAN_TERM_MONTHS)
-    ins_delta = insurance.trade_premium(128, 4900, price) - 128
     r = krt.score(p, 4900, AFFORD, m, 3000, snap)
-    assert r.tradeResult == round(down / krt.HORIZON + loan + ins_delta, 2)
+    best = r.suggested_models[0]
+    assert r.tradeResult == best.monthly_cost
+    assert r.new_payment == best.new_payment
+    assert best.insurance_delta == round(insurance.trade_premium(128, 4900, best.price) - 128, 2)
+    parts = best.down_payment / krt.HORIZON + best.new_payment + best.insurance_delta + best.fuel_delta
+    assert abs(best.monthly_cost - parts) < 0.05
 
 
 def test_loan_payment():
