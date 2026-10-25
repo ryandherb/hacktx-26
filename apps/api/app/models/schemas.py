@@ -65,18 +65,18 @@ class PFOFactors(BaseModel):
 
     income_outlook: Literal["increasing", "stable", "decreasing", "uncertain"] = "stable"
     job_stability: Literal["secure", "at_risk", "unknown"] = "unknown"
-    
+
     upcoming_major_expense: bool = False
-    other_debt_load: Literal["none", "light", "heavy"]
+    other_debt_load: Literal["none", "light", "heavy"] = "none"
     windfall_expected: bool = False
-    
-    payment_risk_tolerance: Literal["low", "medium", "high"] = "unknown"
+
+    payment_risk_tolerance: Literal["low", "medium", "high"] = "medium"
     household_members: int | None = 1
-    
+
     car_usage: Literal["low", "medium", "high"] = "medium"
-    
-    credit_confidence: Literal["low", "medium", "high"]
-    
+
+    credit_confidence: Literal["low", "medium", "high"] = "medium"
+
 class KRTResult(BaseModel):
     keepResult: float
     refinanceResult: float

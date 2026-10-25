@@ -8,6 +8,7 @@ from app.models.schemas import (
     CarFundRequest,
     CarFundResult,
     MarketData,
+    PFOFactors,
     Profile,
 )
 from app.seeds.loader import get_profile, load_profiles
@@ -48,7 +49,7 @@ def analyze(req: AnalysisRequest):
 
     # KRT engine: monthly costs for keep / trade / refinance, then the recommendation.
     repair_cost = valuation.estimated_repair_cost(mkt)
-    pfo = {"down_payment": req.down_payment} if req.down_payment is not None else None
+    pfo = PFOFactors(down_payment=req.down_payment)
     result = krt.score(
         profile, valuation.current_value(mkt), afford, mkt, repair_cost, snapshot, pfo
     )
