@@ -119,6 +119,7 @@ function Card({ card }: { card: OptionCard }) {
         <p className="mt-1 text-[34px] font-extrabold leading-none tracking-tight text-neutral-500">Not available</p>
       )}
       <p className="mt-1.5 text-[14px] leading-snug text-neutral-800">{card.brief}</p>
+      <ProsCons pros={card.pros} cons={card.cons} />
       {card.details && (
         <div className="mt-auto border-t border-neutral-200 pt-1.5">
           <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls={id}
@@ -129,5 +130,26 @@ function Card({ card }: { card: OptionCard }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Short pros/cons for each option, so the options we didn't recommend make sense too.
+function ProsCons({ pros, cons }: { pros: string[]; cons: string[] }) {
+  if (!pros.length && !cons.length) return null;
+  return (
+    <ul className="mb-2 mt-2 space-y-1 text-[13px] leading-snug">
+      {pros.map((p) => (
+        <li key={`+${p}`} className="flex gap-2">
+          <span aria-hidden className="font-bold text-emerald-700">✓</span>
+          <span><span className="sr-only">Pro: </span>{p}</span>
+        </li>
+      ))}
+      {cons.map((c) => (
+        <li key={`-${c}`} className="flex gap-2 text-neutral-600">
+          <span aria-hidden className="font-bold text-[#c8091a]">✕</span>
+          <span><span className="sr-only">Con: </span>{c}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -76,6 +76,8 @@ export type PFOFactors = {
 };
 
 export type OptionExplanation = { brief: string; details: string };
+// Short pros/cons for one option, shown under its card.
+export type OptionNotes = { available: boolean; pros: string[]; cons: string[] };
 
 export type Analysis = {
   profile_id: string;
@@ -93,6 +95,7 @@ export type Analysis = {
   option_explanations: Record<"keep" | "trade" | "refinance", OptionExplanation>;
   repair: RepairEstimate | null; // the repair the engine scored (Cost Agent quote)
   car_value: number | null; // the car value it used (trade-in estimate)
+  option_notes: Partial<Record<"keep" | "trade" | "refinance", OptionNotes>>;
   curve: CurvePoint[]; // legacy chart data; empty now
   crossover_month: number | null;
 };

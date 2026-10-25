@@ -13,6 +13,8 @@ export type OptionCard = {
   status: OptionStatus;
   brief: string;
   details: string;
+  pros: string[]; // short pros/cons from the backend (option_notes), empty when unavailable
+  cons: string[];
 };
 
 export type KeyNumber = { value: string; label: string; warn?: boolean };
@@ -45,6 +47,8 @@ export function optionCards(a: Analysis): OptionCard[] {
     status: status(key),
     brief: a.option_explanations?.[key]?.brief ?? "",
     details: a.option_explanations?.[key]?.details ?? "",
+    pros: a.option_notes?.[key]?.available === false ? [] : a.option_notes?.[key]?.pros ?? [],
+    cons: a.option_notes?.[key]?.available === false ? [] : a.option_notes?.[key]?.cons ?? [],
   }));
 }
 

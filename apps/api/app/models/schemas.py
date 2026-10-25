@@ -95,6 +95,14 @@ class KRTResult(BaseModel):
     suggested_models: list[SuggestedModel]
     trade_affordable: bool
 
+class OptionNotes(BaseModel):
+    """Short pros/cons for one option (app/option_notes.py), shown under each option card."""
+
+    available: bool = True  # false e.g. for refinance with no car loan
+    pros: list[str] = Field(default_factory=list)
+    cons: list[str] = Field(default_factory=list)
+
+
 class OptionExplanation(BaseModel):
     brief: str  # one sentence under the option's monthly cost
     details: str  # a few sentences for the option's "Why?" drop-down
@@ -120,6 +128,8 @@ class AnalysisResult(BaseModel):
     # The repair and car value the engine scored (from the Cost Agent quote).
     repair: "RepairEstimate | None" = None
     car_value: float | None = None
+    # Pros/cons for "keep", "trade", "refinance", so the options we didn't recommend make sense too.
+    option_notes: dict[str, OptionNotes] = Field(default_factory=dict)
 
     # Legacy chart data for the old dashboard (app/page.tsx); empty now.
     curve: list[CurvePoint] = Field(default_factory=list)

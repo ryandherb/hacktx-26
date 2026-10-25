@@ -284,6 +284,39 @@
         "shop": null
       },
       "car_value": 3800.0,
+      "option_notes": {
+        "keep": {
+          "available": true,
+          "pros": [
+            "Lowest monthly cost: about $226/mo",
+            "No new loan or down payment"
+          ],
+          "cons": [
+            "$4,950 repair bill up front",
+            "Repair is about 130% of what the car is worth"
+          ]
+        },
+        "trade": {
+          "available": true,
+          "pros": [
+            "Newer car: 2026 Corolla LE",
+            "Skip the $4,950 repair",
+            "Saves about $20/mo on gas"
+          ],
+          "cons": [
+            "Costs about $487/mo all-in",
+            "$6,000 down payment",
+            "Insurance goes up about $60/mo"
+          ]
+        },
+        "refinance": {
+          "available": false,
+          "pros": [],
+          "cons": [
+            "You don't have a car loan to refinance"
+          ]
+        }
+      },
       "curve": [],
       "crossover_month": null
     }
@@ -524,6 +557,45 @@
         "shop": "South Austin Auto A/C"
       },
       "car_value": 2250.0,
+      "option_notes": {
+        "keep": {
+          "available": true,
+          "pros": [
+            "Lowest monthly cost: about $128/mo",
+            "No new loan or down payment"
+          ],
+          "cons": [
+            "$1,450 repair bill up front",
+            "Repair costs more than your current savings",
+            "Car has only about 15% of its expected life left"
+          ]
+        },
+        "trade": {
+          "available": true,
+          "pros": [
+            "Newer car: 2026 Corolla LE",
+            "Skip the $1,450 repair",
+            "Saves about $11/mo on gas"
+          ],
+          "cons": [
+            "Costs about $687/mo all-in",
+            "$500 down payment",
+            "Over your comfortable monthly payment"
+          ]
+        },
+        "refinance": {
+          "available": true,
+          "pros": [
+            "Loan payment drops to about $0/mo",
+            "Keep your car, no new purchase"
+          ],
+          "cons": [
+            "Still pay the $1,450 repair",
+            "A longer loan can mean more interest overall",
+            "Needs a credit check"
+          ]
+        }
+      },
       "curve": [],
       "crossover_month": null
     }
