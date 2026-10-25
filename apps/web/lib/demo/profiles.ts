@@ -12,15 +12,13 @@ export type ProfileDisplay = {
   color: string;
   ownership: string;
   location: string;
-  // Preset "on file" credit estimate for the demo (financial info is preset, not asked).
-  creditOnFile: string;
   // PLACEHOLDER: same 2025 Camry image for everyone until real model-year photos are supplied.
   imageSrc: string;
 };
 
 export const PROFILE_DISPLAY: Record<string, ProfileDisplay> = {
-  maria: { firstName: "Maria", trim: "LE", color: "Barcelona Red Metallic", ownership: "Owned", location: "Austin, TX", creditOnFile: "740+", imageSrc: "/cars/placeholder.png" },
-  dev: { firstName: "Dev", trim: "LE", color: "Barcelona Red Metallic", ownership: "Owned", location: "Austin, TX", creditOnFile: "580–669", imageSrc: "/cars/placeholder.png" },
+  maria: { firstName: "Maria", trim: "LE", color: "Barcelona Red Metallic", ownership: "Owned", location: "Austin, TX", imageSrc: "/cars/placeholder.png" },
+  dev: { firstName: "Dev", trim: "LE", color: "Barcelona Red Metallic", ownership: "Owned", location: "Austin, TX", imageSrc: "/cars/placeholder.png" },
 };
 
 export const displayFor = (p: Profile): ProfileDisplay =>
@@ -30,7 +28,6 @@ export const displayFor = (p: Profile): ProfileDisplay =>
     color: "",
     ownership: p.loan_balance ? "Financed" : "Owned",
     location: p.zip_code,
-    creditOnFile: "Unknown",
     imageSrc: "/cars/placeholder.png",
   };
 
