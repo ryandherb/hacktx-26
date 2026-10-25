@@ -12,6 +12,8 @@ import type {
   Analysis,
   CostQuoteResult,
   CustomProfileIn,
+  GuideContext,
+  GuideMessage,
   ManualQuote,
   PFOFactors,
   PreQuoteInput,
@@ -22,6 +24,7 @@ import { bankFixtureFor, toBankSnapshotIn, type BankAccount } from "@/lib/demo/b
 import { CUSTOM_PROFILE_ID, loadCustomProfile, type CustomProfile } from "@/lib/demo/customProfile";
 import { classifyRepair, estimateRepair, offlineCustomAnalysis, valueVehicle } from "@/lib/demo/estimate";
 import snapshotJson from "@/lib/demo/offline-snapshot.json";
+import { faqAnswer } from "./guideFaq";
 import { toPfoAnswers, type SituationAnswers } from "./situation";
 
 export type { CostQuoteResult, ManualQuote, PreQuoteInput, PreQuoteSurveyResult } from "@/lib/api";
@@ -204,6 +207,14 @@ export async function startCarFund(profileId: string, monthly: number, target: n
   const r = custom(profileId) ? null : await live(() => api.createCarFund(profileId, monthly, target), 5000);
   if (r) return { data: r, mocked: false };
   return { mocked: true, data: { account_id: "demo-car-fund", monthly_amount: monthly, target_amount: target, simulated: true } };
+}
+
+// ---- Guide chat (Muse on the backend; built-in FAQ when offline or no key) ----------------
+
+export async function askGuide(messages: GuideMessage[], context: GuideContext): Promise<Served<string>> {
+  const r = await live((signal) => api.guideChat(messages, context, { signal }), 15000).catch(() => null);
+  if (r?.reply) return { data: r.reply, mocked: false };
+  return { mocked: true, data: faqAnswer(messages[messages.length - 1].content, context) };
 }
 
 // ---- Bank connection (Capital One Nessie) ---------------------------------------------
