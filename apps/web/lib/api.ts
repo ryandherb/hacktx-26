@@ -337,3 +337,26 @@ export const createCarFund = (
   monthly_amount: number,
   target_amount: number,
 ) => post<CarFund>("/car-fund", { profile_id, monthly_amount, target_amount });
+
+// ---- Guide chat: POST /guide/chat ----
+
+export type GuideStep = "intro" | "problem" | "estimate" | "situation" | "options" | "options_page" | "plan_page";
+
+export type GuideMessage = { role: "user" | "assistant"; content: string };
+
+export type GuideContext = {
+  step?: GuideStep | null;
+  first_name?: string | null;
+  vehicle?: string | null;
+  issue?: string | null;
+  repair_cost_low?: number | null;
+  repair_cost_high?: number | null;
+  recommendation?: "keep" | "trade" | "refinance" | null;
+  monthly_costs?: Partial<Record<"keep" | "trade" | "refinance", number>> | null;
+  summary?: string | null;
+};
+
+export type GuideChatResult = { reply: string | null; source: "llm" | "none" }; // null -> use the FAQ
+
+export const guideChat = (messages: GuideMessage[], context: GuideContext, init?: Init) =>
+  post<GuideChatResult>("/guide/chat", { messages, context }, init);

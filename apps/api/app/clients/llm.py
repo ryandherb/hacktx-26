@@ -158,11 +158,13 @@ def _complete(
     temperature: float = 0.2,
     max_tokens: int | None = None,
     timeout: float | None = None,
+    history: list[dict[str, str]] | None = None,
 ) -> str:
     """Send one chat completion request and return the reply text. Raises LLMError.
 
     Transient failures are retried, then the fallback models are tried. `timeout` caps the
     total time across all of that (used by explain() so /analyze never stalls on the LLM).
+    `history` holds earlier {"role", "content"} turns, sent before `prompt` (the guide chat).
     """
     s = get_settings()
     if not llm_configured():
@@ -175,6 +177,7 @@ def _complete(
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
+    messages.extend(history or [])
     messages.append({"role": "user", "content": prompt})
     body: dict[str, Any] = {
         "messages": messages,

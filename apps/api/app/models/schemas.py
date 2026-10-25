@@ -451,3 +451,47 @@ class AnalysisRequest(BaseModel):
     pfo_factors: PFOFactors | None = None
     # Required when profile_id is "custom": the judge-created profile and its bank data.
     custom_profile: CustomProfileIn | None = None
+
+
+# ---------- Guide chat: POST /guide/chat ----------
+# The floating AI guide answers questions about the process. The client keeps the
+# conversation and sends it every turn, so the backend stays stateless.
+
+GuideText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class GuideMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: GuideText
+
+
+class GuideContext(BaseModel):
+    """Where the customer is in the flow and what they've seen so far. All optional."""
+
+    step: Literal["intro", "problem", "estimate", "situation", "options", "options_page", "plan_page"] | None = None
+    first_name: str | None = None
+    vehicle: str | None = None  # e.g. "2012 Camry"
+    issue: str | None = None  # the problem they described
+    repair_cost_low: float | None = None
+    repair_cost_high: float | None = None
+    recommendation: Literal["keep", "trade", "refinance"] | None = None
+    # All-in monthly cost per option, keyed keep | trade | refinance, as the results page shows.
+    monthly_costs: dict[str, float] | None = None
+    summary: str | None = None  # the Explanation Agent summary on the results page
+
+
+class GuideChatRequest(BaseModel):
+    messages: list[GuideMessage] = Field(min_length=1, max_length=40)
+    context: GuideContext | None = None
+
+    @field_validator("messages")
+    @classmethod
+    def _ends_with_user(cls, v: list[GuideMessage]) -> list[GuideMessage]:
+        if v[-1].role != "user":
+            raise ValueError("the last message must be from the user")
+        return v
+
+
+class GuideChatResult(BaseModel):
+    reply: str | None  # None: no LLM configured or it failed; the client answers from its FAQ
+    source: Literal["llm", "none"]

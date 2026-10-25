@@ -2,7 +2,7 @@ from datetime import date
 
 from fastapi import APIRouter, HTTPException
 
-from app import option_notes
+from app import guide_agent, option_notes
 from app.clients import llm, nessie
 from app.cost_agent import build_handoff, quote_for_profile
 from app.engine import affordability, simulate
@@ -12,6 +12,8 @@ from app.models.schemas import (
     AnalysisResult,
     CarFundRequest,
     CarFundResult,
+    GuideChatRequest,
+    GuideChatResult,
     MarketData,
     OptionExplanation,
     PFOFactors,
@@ -127,3 +129,10 @@ def analyze(req: AnalysisRequest):
 def car_fund(req: CarFundRequest):
     profile = _profile_or_404(req.profile_id)
     return nessie.create_car_fund(profile, req)
+
+
+@router.post("/guide/chat", response_model=GuideChatResult)
+def guide_chat(req: GuideChatRequest):
+    """The floating AI guide. reply is None when the LLM is off; the client uses its FAQ."""
+    text = guide_agent.reply(req)
+    return GuideChatResult(reply=text, source="llm" if text else "none")

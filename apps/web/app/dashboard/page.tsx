@@ -15,10 +15,11 @@ import CarImage from "@/components/dashboard/CarImage";
 import IssuesDrawer from "@/components/dashboard/IssuesDrawer";
 import SiteFooter from "@/components/dashboard/SiteFooter";
 import ToyotaLogo from "@/components/dashboard/ToyotaLogo";
+import GuideChat from "@/components/guide/GuideChat";
 import VehicleDrawer from "@/components/dashboard/VehicleDrawer";
 import { backendReachable } from "@/lib/advisor/service";
 import { useAdvisorState } from "@/lib/advisor/state";
-import { getProfiles, type Profile } from "@/lib/api";
+import { getProfiles, type GuideContext, type Profile } from "@/lib/api";
 import ProfileDrawer from "@/components/dashboard/ProfileDrawer";
 import { CUSTOM_PROFILE_ID, loadCustomProfile, saveCustomProfile, type CustomProfile } from "@/lib/demo/customProfile";
 import { DEMO_PROFILE_IDS, MOCK_PROFILES, displayFor } from "@/lib/demo/profiles";
@@ -101,6 +102,24 @@ export default function Dashboard() {
   const split = advisor.state.view === "open";
   const optionsPage = advisor.state.optionsPage && !!advisor.state.options;
   const planPage = optionsPage && advisor.state.planPage;
+  // What the floating guide knows: where the customer is and the results they've already seen.
+  const analysis = advisor.state.options;
+  const repair = advisor.state.quote?.repair;
+  const guideContext: GuideContext = {
+    step: planPage ? "plan_page" : optionsPage ? "options_page" : advisor.state.step,
+    first_name: d.firstName,
+    vehicle: title,
+    issue: advisor.state.reportedIssue?.text || advisor.state.problem || null,
+    repair_cost_low: repair?.repair_cost_low ?? null,
+    repair_cost_high: repair?.repair_cost_high ?? null,
+    recommendation: analysis?.recommendation ?? null,
+    monthly_costs: analysis
+      ? Object.fromEntries((["keep", "trade", "refinance"] as const)
+          .filter((k) => analysis.option_notes[k]?.available !== false)
+          .map((k) => [k, analysis.result[`${k}Result`]]))
+      : null,
+    summary: analysis?.explanation ?? null,
+  };
 
   return (
     <div className="bg-white text-black">
@@ -272,6 +291,8 @@ export default function Dashboard() {
       {advisor.state.view === "minimized" && (
         <MinimizedPill stepLabel={advisorStep ? `Step ${advisorStep} of 3` : "Ready to start"} onResume={openAdvisor} />
       )}
+      {/* Keyed by profile so switching people starts a fresh conversation. */}
+      <GuideChat key={profile.id} context={guideContext} />
     </div>
   );
 }
