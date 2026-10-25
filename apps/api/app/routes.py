@@ -52,17 +52,21 @@ def analyze(req: AnalysisRequest):
     snapshot = nessie.get_snapshot(profile)
     afford = affordability.compute(snapshot)
     mkt = _market_data(profile)
-    pfo = PFOFactors(down_payment=req.down_payment)
+    pfo = req.pfo or PFOFactors(down_payment=req.down_payment)
+    # Plan for the high end of the repair the customer saw; fall back to the fixture quotes.
+    repair_cost = req.repair_cost_high or req.repair_cost_low or valuation.estimated_repair_cost(mkt)
 
     # KRT engine: monthly costs, recommendation, and suggested Toyota models.
-    analysis = simulate.run(profile, mkt, afford, req, snapshot, pfo)
+    analysis = simulate.run(profile, mkt, afford, req, snapshot, pfo, repair_cost)
 
     explanation = llm.explain(
         {
             "recommendation": analysis.recommendation,
             "krt": analysis.result,
             "vehicle": f"{profile.vehicle_year} {profile.vehicle_model}",
-            "repair_cost": valuation.estimated_repair_cost(mkt),
+            "repair_cost": repair_cost,
+            "repair_cost_low": req.repair_cost_low,
+            "repair_cost_high": req.repair_cost_high,
             "affordability": afford,
             "horizon_months": req.horizon_months,
         }

@@ -109,10 +109,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const getProfiles = () => request<Profile[]>("/profiles");
 
-export const analyze = (profile_id: string, horizon_months = 36) =>
+// Optional inputs: the customer's answers (pfo) and the repair cost they saw
+// (Cost Agent range, or low === high for a shop quote). Omitted -> backend fixtures.
+export type AnalysisInputs = {
+  horizon_months?: number;
+  pfo?: PFOFactors;
+  repair_cost_low?: number;
+  repair_cost_high?: number;
+};
+
+export const analyze = (profile_id: string, inputs: AnalysisInputs = {}) =>
   request<Analysis>("/analyze", {
     method: "POST",
-    body: JSON.stringify({ profile_id, horizon_months }),
+    body: JSON.stringify({ profile_id, horizon_months: 36, ...inputs }),
   });
 
 export const createCarFund = (

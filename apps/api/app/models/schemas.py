@@ -50,6 +50,11 @@ class AnalysisRequest(BaseModel):
     horizon_months: int = 36
     replacement_price: float | None = None  # override default replacement option
     down_payment: float | None = None
+    pfo: "PFOFactors | None" = None  # the customer's answers; defaults when omitted
+    # Repair cost the customer saw (Cost Agent range, or low == high for a shop quote).
+    # The engine plans for the high end; omitted -> the fixture repair quotes.
+    repair_cost_low: float | None = None
+    repair_cost_high: float | None = None
 
 
 class CurvePoint(BaseModel):

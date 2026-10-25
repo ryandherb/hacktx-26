@@ -84,6 +84,9 @@ Strict rules:
 restate numbers exactly as they appear in the JSON. If a number is not in the JSON, do not \
 mention it. Do not state differences or savings between options unless that number is given.
 - Do not change the recommendation. Explain the one you were given.
+- "trade" can win even when keepResult is lower: when the repair costs at least half of what \
+the car is worth, the car has little life left, and a replacement is affordable, putting money \
+into the repair isn't worth it. In that case lead with repair_pct_of_car_value as the reason.
 - If the recommendation is not "trade", you may mention the best suggested model as an \
 option for later.
 """
@@ -301,6 +304,15 @@ def _summary_template(facts: dict) -> str:
 
     if rec not in SHORT_HEADLINES:
         return f"Here's a summary of your options. {SHORT_DISCLAIMER}"
+    pct = krt.get("repair_pct_of_car_value")
+    if (rec == "trade" and _num(pct) and _num(trade) and _num(keep) and trade > keep
+            and best and _num(best.get("monthly_cost"))):
+        # Trade won on the 50% rule, not on monthly cost: lead with the repair-to-value reason.
+        return (
+            f"The repair would cost about {pct:g}% of what {car} is worth, so trading in is "
+            f"your best move. A {best.get('name', 'newer Toyota')} would run about "
+            f"{_money(best['monthly_cost'])} a month, and it fits your budget. {SHORT_DISCLAIMER}"
+        )
     first = SHORT_HEADLINES[rec].format(car=car)
     if rec == "keep" and _num(keep) and _num(trade):
         first += f": about {_money(keep)} a month, compared with {_money(trade)} to trade in."
@@ -316,7 +328,6 @@ def _summary_template(facts: dict) -> str:
         first += "."
     parts = [first[0].upper() + first[1:]]
 
-    pct = krt.get("repair_pct_of_car_value")
     if rec == "keep" and krt.get("trade_affordable") is False:
         parts.append("A new car payment doesn't fit your budget right now.")
     elif rec == "trade" and _num(pct):
@@ -354,19 +365,22 @@ def _details_template(facts: dict) -> str:
     keep, trade, refi = krt.get("keepResult"), krt.get("tradeResult"), krt.get("refinanceResult")
     if _num(keep) and _num(trade):
         costs = f"Estimated monthly cost: keeping {_money(keep)}, trading {_money(trade)}"
-        if _num(refi) and refi != keep:  # equal when there's no loan to refinance
+        has_loan = _num(krt.get("refi_payment")) and krt["refi_payment"] > 0
+        if _num(refi) and refi != keep and has_loan:  # no loan, nothing to refinance
             costs += f", refinancing {_money(refi)}"
         parts.append(costs + ".")
 
     lo, hi = facts.get("repair_cost_low"), facts.get("repair_cost_high")
-    if _num(lo) and _num(hi):
+    if _num(lo) and _num(hi) and lo == hi:
+        parts.append(f"The repair is quoted at {_money(hi)}.")
+    elif _num(lo) and _num(hi):
         parts.append(f"The repair is estimated at {_money(lo)} to {_money(hi)}.")
     elif _num(facts.get("repair_cost")):
         parts.append(f"The repair is estimated at about {_money(facts['repair_cost'])}.")
 
     pct, runway = krt.get("repair_pct_of_car_value"), krt.get("savings_months_after_repair")
     if _num(pct):
-        said_cost = parts and parts[-1].startswith("The repair is estimated")
+        said_cost = parts and parts[-1].startswith(("The repair is estimated", "The repair is quoted"))
         lead = "That's" if said_cost else "The repair is"
         sentence = f"{lead} about {pct:g}% of what the car is worth"
         if _num(runway):

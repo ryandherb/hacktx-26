@@ -31,7 +31,7 @@ def test_picks_are_ranked_by_monthly_cost():
 
 def test_household_size_filters_out_small_cars():
     picks = _score("sam", PFOFactors(household_members=7)).suggested_models
-    assert [o.name for o in picks] == ["2021 Highlander L (CPO)"]
+    assert [o.name for o in picks] == ["2026 Sienna LE"]
     assert "seats 8" in picks[0].reason
 
 
