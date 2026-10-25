@@ -1,30 +1,61 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getOptions, OPTION_LABELS, type OptionId, type OptionsContext, type OptionsResult } from "@/lib/advisor/service";
+import type { Analysis } from "@/lib/api";
+import { getOptions, OPTION_LABELS, type OptionsInputs } from "@/lib/advisor/service";
 import { ring } from "./AdvisorPanel";
 import { StepLayout } from "./controls";
 import StepFooter from "./StepFooter";
 
 const STAGES = ["Estimating your repair", "Checking your finances", "Scoring your options", "Writing your explanation"];
 
-type Props = { profileId: string; context: OptionsContext; onBack: () => void; onStartOver: () => void; onResult: (r: OptionsResult, mocked: boolean) => void; onView: () => void };
+type Props = {
+  profileId: string;
+  inputs: OptionsInputs;
+  onBack: () => void;
+  onStartOver: () => void;
+  onResult: (r: Analysis, mocked: boolean) => void;
+  onView: () => void;
+};
 
 // Results are re-requested every time this step mounts, so edited answers never show a stale result.
-export default function OptionsStep({ profileId, context, onBack, onStartOver, onResult, onView }: Props) {
-  const [result, setResult] = useState<OptionsResult | null>(null);
+export default function OptionsStep({ profileId, inputs, onBack, onStartOver, onResult, onView }: Props) {
+  const [result, setResult] = useState<Analysis | null>(null);
   const [mocked, setMocked] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [stage, setStage] = useState(0);
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
-  const contextRef = useRef(context);
+  const inputsRef = useRef(inputs);
+  inputsRef.current = inputs;
 
   useEffect(() => {
     let live = true;
+    setError(null);
+    setStage(0);
     const timer = setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 650);
-    getOptions(profileId, contextRef.current).then((r) => { if (live) { setResult(r.data); setMocked(r.mocked); onResultRef.current(r.data, r.mocked); } });
+    getOptions(profileId, inputsRef.current)
+      .then((r) => { if (live) { setResult(r.data); setMocked(r.mocked); onResultRef.current(r.data, r.mocked); } })
+      .catch((e) => { if (live) setError(e instanceof Error ? e.message : "Something went wrong."); })
+      .finally(() => clearInterval(timer));
     return () => { live = false; clearInterval(timer); };
-  }, [profileId]);
+  }, [profileId, attempt]);
+
+  if (error) {
+    return (
+      <StepLayout footer={<StepFooter step={3} onBack={onBack} />}>
+        <div role="alert">
+          <h2 id="advisor-title" tabIndex={-1} className="text-[clamp(24px,2.2vw,30px)] font-extrabold tracking-tight outline-none">We couldn&rsquo;t score your options</h2>
+          <p className="mt-3 text-[16px] text-neutral-600">{error}</p>
+          <button onClick={() => setAttempt((a) => a + 1)}
+            className={`mt-6 rounded-full bg-[#EB0A1E] px-8 py-3 font-bold text-white hover:bg-[#c8091a] ${ring}`}>
+            Try again
+          </button>
+        </div>
+      </StepLayout>
+    );
+  }
 
   if (!result) {
     return (
@@ -46,8 +77,6 @@ export default function OptionsStep({ profileId, context, onBack, onStartOver, o
     );
   }
 
-  const top = (Object.keys(result.scores) as OptionId[]).sort((x, y) => result.scores[y] - result.scores[x])[0];
-
   return (
     <StepLayout footer={
       <StepFooter step={3} onBack={onBack}
@@ -57,13 +86,13 @@ export default function OptionsStep({ profileId, context, onBack, onStartOver, o
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/advisor/guide-placeholder.png" alt="" className="w-[clamp(80px,14vh,112px)] object-contain mix-blend-multiply" />
         <h2 id="advisor-title" tabIndex={-1} className="mt-4 text-[clamp(26px,2.6vw,34px)] font-extrabold leading-tight tracking-tight outline-none">Your options are ready</h2>
-        <p className="mt-2 max-w-sm text-[16px] text-neutral-600">We compared keeping and repairing, trading in, and selling privately.</p>
-        <p className="mt-3 text-[15px]"><span className="text-neutral-500">Best fit:</span> <span className="font-bold">{OPTION_LABELS[top][0]}</span></p>
+        <p className="mt-2 max-w-sm text-[16px] text-neutral-600">We compared keeping and repairing, trading in, and refinancing.</p>
+        <p className="mt-3 text-[15px]"><span className="text-neutral-500">Best fit:</span> <span className="font-bold">{OPTION_LABELS[result.recommendation][0]}</span></p>
         <button onClick={onView}
           className={`mt-6 inline-flex items-center gap-3 rounded-full bg-[#EB0A1E] px-10 py-4 xl:px-14 text-xl font-bold text-white shadow-[0_10px_28px_rgba(235,10,30,0.3)] hover:bg-[#c8091a] ${ring}`}>
           View your options <span aria-hidden>→</span>
         </button>
-        {mocked && <p className="mt-3 text-[11px] text-neutral-500">Demo results: scoring isn&rsquo;t connected yet.</p>}
+        {mocked && <p className="mt-3 text-[11px] text-neutral-500">Sample results: the scoring service isn&rsquo;t reachable from this site.</p>}
       </div>
     </StepLayout>
   );

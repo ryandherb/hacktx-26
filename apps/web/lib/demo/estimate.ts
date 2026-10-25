@@ -1,8 +1,9 @@
-// MOCK Cost Agent for profiles without a captured /quote response (the judge's own profile).
-// A small frontend copy of issue_2_cost_agent/app/engine/{cost_tables,repair_costs,vehicle_value}.py
-// so any car gets a plausible estimate offline. Delete once POST /quote is mounted on main; the real
-// endpoint stays authoritative.
-import type { RepairClassification, RepairEstimate, VehicleValue } from "@/lib/advisor/service";
+// OFFLINE fallback for the judge's own profile, which has no saved run in offline-snapshot.json.
+// A small frontend copy of apps/api/app/engine/{cost_tables,repair_costs,vehicle_value}.py so the
+// estimate still works when the API is unreachable. The live POST /quote stays authoritative.
+import type { Analysis, CostQuoteResult, PFOFactors, RepairClassification, RepairEstimate, SuggestedModel, VehicleValue } from "@/lib/api";
+import { bankFixtureFor } from "./bank";
+import { CUSTOM_PROFILE_ID, type CustomProfile } from "./customProfile";
 
 const REPAIRS: Record<string, { label: string; low: number; high: number; keywords: string[] }> = {
   brakes: { label: "Brake pads and rotors (one axle)", low: 250, high: 600, keywords: ["brake", "brakes", "brake pads", "pads", "rotor", "rotors", "braking"] },
@@ -93,9 +94,14 @@ export function estimateRepair(category: string, vehicleModel: string, vehicleYe
   const age = Math.max(0, new Date().getFullYear() - vehicleYear);
   const ageMult = age <= 5 ? 1 : age <= 10 ? 1.05 : age <= 15 ? 1.1 : 1.15;
   const region = stateFromZip(zip);
-  const factor = modelData(vehicleModel).repairMultiplier * ageMult * (region ? LABOR[region] ?? 1 : 1);
+  const modelMult = modelData(vehicleModel).repairMultiplier;
+  const regionMult = region ? LABOR[region] ?? 1 : 1;
+  const factor = modelMult * ageMult * regionMult;
   const low = round10(r.low * factor), high = round10(r.high * factor);
-  return { source: "table", category, label: r.label, repair_cost_low: low, repair_cost_high: high, repair_cost_estimate: high, region, shop: null };
+  return {
+    source: "table", category, label: r.label, repair_cost_low: low, repair_cost_high: high, repair_cost_estimate: high,
+    model_multiplier: modelMult, age_multiplier: ageMult, region_multiplier: regionMult, region, shop: null,
+  };
 }
 
 export function valueVehicle(vehicleModel: string, vehicleYear: number, mileage: number): VehicleValue {
@@ -105,8 +111,110 @@ export function valueVehicle(vehicleModel: string, vehicleYear: number, mileage:
   const priv = Math.max(500, msrp * (1 - depreciation) ** age * mileageAdj);
   const trade = Math.max(500, priv * 0.8);
   return {
-    vehicle_age_years: age, mileage,
+    model_recognized: true, vehicle_age_years: age, mileage, mileage_source: "profile",
     private_sale_low: round50(priv * 0.9), private_sale_high: round50(priv * 1.1), private_sale_estimate: round50(priv),
     trade_in_low: round50(trade * 0.9), trade_in_high: round50(trade * 1.1), trade_in_estimate: round50(trade),
+  };
+}
+
+// ---- Offline results: a simplified copy of apps/api/app/engine/krt.py --------------------
+// Same structure (monthly cost of keep / trade / refinance over 36 months, lowest affordable
+// wins, keep wins ties) without the insurance, fuel, and risk-margin details. Only used when the
+// API is unreachable; POST /analyze stays authoritative.
+
+const HORIZON = 36;
+const LOAN_MONTHS = 60;
+// $/mile from market.json's "custom" maintenance schedule.
+const MAINT_PER_MILE = 75 / 5000 + 30 / 5000 + 90 / 30000 + 300 / 40000 + 150 / 100000;
+const USAGE = { low: 0.75, medium: 1, high: 1.3 } as const;
+// market.json "custom" replacement options, with specs from seeds/toyota_catalog.json.
+const REPLACEMENTS = [
+  { name: "2021 Camry LE (CPO)", price: 24500, kind: "cpo", seats: 5, mpg: 32, body: "sedan" },
+  { name: "2022 Camry Hybrid LE (CPO)", price: 26900, kind: "cpo", seats: 5, mpg: 51, body: "sedan" },
+  { name: "2021 Corolla LE (CPO)", price: 19500, kind: "cpo", seats: 5, mpg: 33, body: "sedan" },
+];
+
+const amortize = (principal: number, apr: number, months: number) =>
+  principal <= 0 ? 0 : apr === 0 ? principal / months : (principal * (apr / 12)) / (1 - (1 + apr / 12) ** -months);
+const r2 = (n: number) => Math.round(n * 100) / 100;
+const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
+
+export function offlineCustomAnalysis(c: CustomProfile, quote: CostQuoteResult | null, pfo: PFOFactors): Analysis {
+  const p = c.profile;
+  const vehicle = quote?.vehicle ?? valueVehicle(p.vehicle_model, p.vehicle_year, p.mileage);
+  const carValue = vehicle.trade_in_estimate;
+  const repairCost = quote?.repair?.repair_cost_estimate ?? 0;
+  const apr = pfo.apr ?? 0.07;
+  const usage = USAGE[pfo.car_usage ?? "medium"];
+
+  // Affordability, as apps/api/app/engine/affordability.py computes it from the bank data.
+  const bank = bankFixtureFor(CUSTOM_PROFILE_ID);
+  const monthly = (xs: { amount: number; date: string }[]) => xs.reduce((s, x) => s + x.amount, 0) / (new Set(xs.map((x) => x.date.slice(0, 7))).size || 1);
+  const income = monthly(bank.deposits), spend = monthly(bank.purchases);
+  const savings = bank.accounts.filter((a) => a.type === "Savings").reduce((s, a) => s + a.balance, 0);
+  const maxPayment = Math.max(income - spend - 300, 0);
+
+  // Keep: repair spread over the horizon + maintenance + unscheduled repairs + current loan payment.
+  const age = Math.max(0, new Date().getFullYear() - p.vehicle_year);
+  const milesPerMonth = (p.mileage / (12 * age + 6)) * usage;
+  const m = p.mileage / 100000;
+  const unscheduled = (0.3 * (1 + 0.54 * m ** 1.5) * 1000 * (1 + 0.15 * m) * (carValue / 15000) ** 0.3 * usage) / 12;
+  const keep = repairCost / HORIZON + MAINT_PER_MILE * milesPerMonth + unscheduled + p.monthly_payment;
+
+  // Trade: each replacement financed over 60 months after the down payment and the car's equity.
+  const equity = carValue - p.loan_balance;
+  const options: SuggestedModel[] = REPLACEMENTS.map((o) => {
+    const down = pfo.down_payment ?? 0.2 * o.price;
+    const payment = amortize(Math.max(0, o.price - down - equity), apr, LOAN_MONTHS);
+    const insuranceDelta = ((o.price - carValue) * 0.035) / 12;
+    return {
+      ...o, down_payment: r2(down), new_payment: r2(payment), insurance_delta: r2(insuranceDelta), fuel_delta: 0,
+      monthly_cost: r2(down / HORIZON + payment + insuranceDelta), reason: "",
+    };
+  }).sort((a, b) => a.monthly_cost - b.monthly_cost);
+  const best = options[0];
+  const tradeAffordable = best.new_payment <= maxPayment;
+
+  // Refinance: keep the car and re-amortize the remaining balance (equal to keep with no loan).
+  const refiPayment = amortize(p.loan_balance, apr, LOAN_MONTHS);
+  const refinance = keep - p.monthly_payment + refiPayment;
+
+  const candidates: [Analysis["recommendation"], number][] = [["keep", keep]];
+  if (refinance < keep) candidates.push(["refinance", refinance]);
+  if (tradeAffordable && best.monthly_cost < keep) candidates.push(["trade", best.monthly_cost]);
+  const recommendation = candidates.reduce((a, b) => (b[1] < a[1] ? b : a))[0];
+
+  const car = `${p.vehicle_year} ${p.vehicle_model}`;
+  const summary = {
+    keep: `Repairing your ${car} costs about ${money(keep)} a month over three years, less than trading in (${money(best.monthly_cost)}).`,
+    refinance: `Keeping your ${car} and refinancing the loan brings it to about ${money(refinance)} a month, the lowest of your options.`,
+    trade: `Trading in for a ${best.name} costs about ${money(best.monthly_cost)} a month, less than keeping your ${car} (${money(keep)}).`,
+  }[recommendation];
+
+  return {
+    profile_id: CUSTOM_PROFILE_ID,
+    recommendation,
+    result: {
+      keepResult: r2(keep), refinanceResult: r2(refinance), tradeResult: best.monthly_cost,
+      repair_ratio: carValue ? repairCost / carValue : 0, pr_runway: spend ? (savings - repairCost) / spend : 0,
+      remaining_life: Math.max(0, 1 - p.mileage / 200000), new_payment: best.new_payment, refi_payment: r2(refiPayment),
+      suggested_models: options, trade_affordable: tradeAffordable,
+    },
+    new_monthly_payment: best.new_payment,
+    suggested_models: recommendation === "trade" ? options : null,
+    apr,
+    down_payment: pfo.down_payment ?? null,
+    affordability: {
+      monthly_income: r2(income), monthly_spend: r2(spend), savings_balance: savings, monthly_surplus: r2(income - spend),
+      runway_months: spend ? Math.round((savings / spend) * 10) / 10 : 0, can_afford_payment: maxPayment > 0, max_comfortable_payment: r2(maxPayment),
+    },
+    market: {
+      current_vehicle_value_low: vehicle.private_sale_low, current_vehicle_value_high: vehicle.private_sale_high,
+      scheduled_maintenance: [], replacement_options: REPLACEMENTS.map(({ name, price, kind }) => ({ name, price, kind })), repair_quotes: [],
+    },
+    explanation: `${summary} Estimates, not financial advice.`,
+    explanation_details: `Repair estimate ${money(repairCost)} on a car worth about ${money(carValue)} as a trade-in. Monthly cost over three years: keep ${money(keep)}, trade ${money(best.monthly_cost)}${p.loan_balance ? `, refinance ${money(refinance)}` : ""}. Comfortable new payment: up to ${money(maxPayment)} a month.`,
+    curve: [],
+    crossover_month: null,
   };
 }

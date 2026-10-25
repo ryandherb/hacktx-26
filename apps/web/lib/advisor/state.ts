@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { BankSnapshot, CostQuoteResult, ManualQuote, OptionsResult, PreQuoteSurveyResult } from "./service";
+import type { Analysis } from "@/lib/api";
+import type { BankSnapshot, CostQuoteResult, ManualQuote, PreQuoteSurveyResult } from "./service";
 import { EMPTY_SITUATION, type SituationAnswers } from "./situation";
 
 // Under the nextmove:v1:assessment prefix so clearAssessment() in lib/demo/session.ts wipes it.
@@ -31,8 +32,8 @@ export type AdvisorState = {
   bank: BankSnapshot | null;
   bankSkipped: boolean;
   bankModal: boolean;
-  // Results for step 3, and whether the full-width options page is slid into view.
-  options: OptionsResult | null;
+  // Results for step 3 (POST /analyze), and whether the full-width options page is slid into view.
+  options: Analysis | null;
   optionsMocked: boolean;
   optionsPage: boolean;
 };
@@ -48,7 +49,9 @@ export function useAdvisorState() {
       if (raw) {
         const saved = JSON.parse(raw) as Partial<AdvisorState>;
         const step = saved.step && ["problem", "estimate", "situation", "options"].includes(saved.step) ? saved.step : "intro";
-        setState({ ...INITIAL, ...saved, step, situation: { ...EMPTY_SITUATION, ...saved.situation } });
+        // Results saved by an older build have a different shape; drop them so they're re-requested.
+        const options = saved.options && "result" in saved.options ? saved.options : null;
+        setState({ ...INITIAL, ...saved, step, options, optionsPage: !!options && !!saved.optionsPage, situation: { ...EMPTY_SITUATION, ...saved.situation } });
       }
     } catch {}
   }, []);

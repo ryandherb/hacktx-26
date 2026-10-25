@@ -1,6 +1,7 @@
 // MOCK bank data for the demo "connect your bank" flow. Numbers copied from the team's
 // apps/api/app/fixtures/nessie.json (origin/main) so the frontend matches the backend fixtures.
 // Replace with a real Nessie-backed endpoint once the backend exposes one.
+import type { BankSnapshotIn } from "@/lib/api";
 import { CUSTOM_PROFILE_ID, loadCustomProfile, type CustomFinances } from "./customProfile";
 
 export type BankTxn = { amount: number; date: string; description: string };
@@ -75,4 +76,14 @@ export function bankFixtureFor(profileId: string): BankFixture {
     if (c) return fixtureFromFinances(c.finances);
   }
   return BANK_FIXTURES[profileId] ?? BANK_FIXTURES.dev;
+}
+
+// The fixture in POST /analyze's custom_profile.bank shape (fixtures/nessie.json field names).
+export function toBankSnapshotIn(f: BankFixture): BankSnapshotIn {
+  const txn = (t: BankTxn) => ({ amount: t.amount, transaction_date: t.date, description: t.description });
+  return {
+    accounts: f.accounts.map((a) => ({ type: a.type, balance: a.balance })),
+    deposits: f.deposits.map(txn),
+    purchases: f.purchases.map(txn),
+  };
 }
