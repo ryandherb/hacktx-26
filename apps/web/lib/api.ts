@@ -269,6 +269,29 @@ export type AnalysisRequest = {
   down_payment?: number | null; // used only when pfo_factors is not sent
   quote?: CostQuoteResult | null; // complete POST /quote result; omitted -> backend quotes the profile's open issue
   pfo_factors?: PFOFactors | null; // POST /onboarding factors; omitted -> defaults
+  custom_profile?: CustomProfileIn | null; // required when profile_id is "custom"
+};
+
+// The judge-created profile (lib/demo/customProfile.ts); lives in the browser, not the seeds.
+export type BankTransactionIn = { amount: number; transaction_date: string; description: string };
+
+export type BankSnapshotIn = {
+  accounts: { type: "Checking" | "Savings"; balance: number }[];
+  deposits: BankTransactionIn[];
+  purchases: BankTransactionIn[];
+};
+
+export type CustomProfileIn = {
+  name: string;
+  vehicle_model: "Camry";
+  vehicle_year: number;
+  mileage: number;
+  zip_code: string;
+  loan_balance: number;
+  monthly_payment: number;
+  insurance_premium: number | null;
+  open_issue: string | null;
+  bank: BankSnapshotIn;
 };
 
 export type CarFund = {

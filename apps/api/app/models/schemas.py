@@ -387,6 +387,58 @@ class CostAgentHandoff(BaseModel):
 # ---------- POST /analyze ----------
 # Defined last because it carries the Cost Agent and PFO results above.
 
+CUSTOM_PROFILE_ID = "custom"
+
+
+class BankAccountIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["Checking", "Savings"]
+    balance: Money
+
+
+class BankTransactionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: Money
+    transaction_date: Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}$")]
+    description: Annotated[str, StringConstraints(max_length=100)] = ""
+
+
+class BankSnapshotIn(BaseModel):
+    """Same shape as an entry in fixtures/nessie.json, built by the client from typed-in finances."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    accounts: list[BankAccountIn] = Field(max_length=10)
+    deposits: list[BankTransactionIn] = Field(max_length=60)
+    purchases: list[BankTransactionIn] = Field(max_length=200)
+
+
+class CustomProfileIn(BaseModel):
+    """A judge-created profile that lives in the browser, not in seeds/toyota_profiles.json.
+
+    Sent with profile_id "custom" so /analyze stays stateless. Locked to the Camry because the
+    UI only has Camry photos and market.json only has a Camry entry ("custom").
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+    vehicle_model: Literal["Camry"]
+    vehicle_year: SurveyYear
+    mileage: Mileage
+    zip_code: Annotated[str, StringConstraints(pattern=r"^\d{5}$")]
+    loan_balance: Money = 0.0
+    monthly_payment: Money = 0.0
+    insurance_premium: Money | None = None
+    open_issue: SurveyText | None = None
+    bank: BankSnapshotIn
+
+    def to_profile(self) -> Profile:
+        return Profile(id=CUSTOM_PROFILE_ID, **self.model_dump(exclude={"bank"}))
+
+
 class AnalysisRequest(BaseModel):
     profile_id: str
     horizon_months: int = 36
@@ -397,3 +449,5 @@ class AnalysisRequest(BaseModel):
     quote: CostQuoteResult | None = None
     # From POST /onboarding (factors). When omitted, the PFOFactors defaults are used.
     pfo_factors: PFOFactors | None = None
+    # Required when profile_id is "custom": the judge-created profile and its bank data.
+    custom_profile: CustomProfileIn | None = None

@@ -3,16 +3,24 @@
 // Offline: the Vercel demo has no backend, so when the API is unreachable each call falls back to
 // lib/demo/offline-snapshot.json, a saved run of the real backend for the demo profiles
 // (regenerate with apps/api/scripts/export_demo_snapshot.py). Fallbacks are flagged `mocked: true`.
+//
+// The judge's own profile (id "custom", lib/demo/customProfile.ts) isn't in the backend seeds:
+// the survey and quote get its vehicle facts with no profile_id, /analyze gets the whole profile
+// as custom_profile, and offline it falls back to lib/demo/estimate.ts instead of the snapshot.
 import * as api from "@/lib/api";
 import type {
   Analysis,
   CostQuoteResult,
+  CustomProfileIn,
   ManualQuote,
+  PFOFactors,
   PreQuoteInput,
   PreQuoteSurveyResult,
   RepairEstimate,
 } from "@/lib/api";
-import { BANK_FIXTURES, type BankAccount } from "@/lib/demo/bank";
+import { bankFixtureFor, toBankSnapshotIn, type BankAccount } from "@/lib/demo/bank";
+import { CUSTOM_PROFILE_ID, loadCustomProfile, type CustomProfile } from "@/lib/demo/customProfile";
+import { classifyRepair, estimateRepair, offlineCustomAnalysis, valueVehicle } from "@/lib/demo/estimate";
 import snapshotJson from "@/lib/demo/offline-snapshot.json";
 import { toPfoAnswers, type SituationAnswers } from "./situation";
 
@@ -23,6 +31,8 @@ export type Served<T> = { data: T; mocked: boolean };
 type Snapshot = Record<string, { survey: PreQuoteSurveyResult; quote: CostQuoteResult; analysis: Analysis }>;
 const SNAPSHOT = snapshotJson as unknown as Snapshot;
 const snapshotFor = (profileId: string) => SNAPSHOT[profileId] ?? SNAPSHOT.dev;
+
+const custom = (profileId: string): CustomProfile | null => (profileId === CUSTOM_PROFILE_ID ? loadCustomProfile() : null);
 
 // Only call a backend when one is configured, or when the site itself runs on this machine.
 // A deployed page that calls http://localhost makes Chrome hold the request for a local-network
@@ -56,7 +66,10 @@ async function live<T>(call: (signal: AbortSignal) => Promise<T>, ms: number): P
 type VehicleFacts = { vehicle_model: string; vehicle_year: number; zip_code: string };
 
 export async function submitProblem(profileId: string, text: string, vehicle: VehicleFacts): Promise<Served<PreQuoteSurveyResult>> {
-  const r = await live((signal) => api.preQuoteSurvey({ profile_id: profileId, answers: { repair_type: text } }, { signal }), 10000);
+  const body = profileId === CUSTOM_PROFILE_ID
+    ? { answers: { repair_type: text, vehicle_model: vehicle.vehicle_model, vehicle_year: vehicle.vehicle_year, location: vehicle.zip_code } }
+    : { profile_id: profileId, answers: { repair_type: text } };
+  const r = await live((signal) => api.preQuoteSurvey(body, { signal }), 10000);
   if (r) return { data: r, mocked: false };
   // Offline: same shape the survey returns for a complete profile, with the text the user typed.
   const quote_input = { repair_type: text, vehicle_model: vehicle.vehicle_model, vehicle_year: vehicle.vehicle_year, location: vehicle.zip_code };
@@ -69,15 +82,40 @@ export async function submitProblem(profileId: string, text: string, vehicle: Ve
 // ---- Step 2: repair quote (issue #2 Cost Agent) ------------------------------------------
 
 export async function getQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): Promise<Served<CostQuoteResult>> {
-  const r = await live((signal) => api.quote({ profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote }, { signal }), 20000); // Muse retries + Render cold starts
+  const c = custom(profileId);
+  const body = c
+    ? { profile_id: null, quote_input: quoteInput, mileage: c.profile.mileage, manual_quote: manualQuote }
+    : { profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote };
+  const r = await live((signal) => api.quote(body, { signal }), 20000); // Muse retries + Render cold starts
   if (r) return { data: r, mocked: false };
   return { mocked: true, data: offlineQuote(profileId, quoteInput, manualQuote) };
+}
+
+// Offline estimate for the judge's own Camry (lib/demo/estimate.ts), shaped like the snapshot's.
+function customQuoteBase(c: CustomProfile, quoteInput: PreQuoteInput): CostQuoteResult {
+  const classification = classifyRepair(quoteInput.repair_type);
+  const repair = classification.quotable && classification.category
+    ? estimateRepair(classification.category, quoteInput.vehicle_model, quoteInput.vehicle_year, quoteInput.location)
+    : null;
+  return {
+    profile_id: CUSTOM_PROFILE_ID,
+    quote_input: quoteInput,
+    classification,
+    needs_manual: !repair,
+    questions: repair ? [] : [{ field: "manual_quote", prompt: `${classification.reason} If you already have a quote, enter the total amount.`, input_type: "number" }],
+    repair,
+    vehicle: valueVehicle(quoteInput.vehicle_model, quoteInput.vehicle_year, c.profile.mileage),
+    nearby_shops: [],
+    complete: !!repair,
+    disclaimer: snapshotFor("maria").quote.disclaimer,
+  };
 }
 
 // Offline: the saved Cost Agent result for this profile. A shop quote replaces the table
 // estimate the same way the backend does (source "manual").
 function offlineQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): CostQuoteResult {
-  const base = snapshotFor(profileId).quote;
+  const own = custom(profileId);
+  const base = own ? customQuoteBase(own, quoteInput) : snapshotFor(profileId).quote;
   const c = base.classification;
   const repair: RepairEstimate | null = manualQuote
     ? { source: "manual", category: c.category, label: c.label ?? "Shop quote", repair_cost_low: manualQuote.amount, repair_cost_high: manualQuote.amount, repair_cost_estimate: manualQuote.amount, model_multiplier: null, age_multiplier: null, region_multiplier: null, region: null, shop: manualQuote.shop ?? null }
@@ -119,21 +157,51 @@ export async function getOptions(profileId: string, inputs: OptionsInputs): Prom
     await new Promise((r) => setTimeout(r, 2600)); // lets the "crunching numbers" screen read naturally
     return { mocked: true, data: SNAPSHOT[profileId].analysis };
   }
-  const r = await live(async (signal) => {
+  const c = custom(profileId);
+  // A backend deployed before custom_profile support answers the judge's profile with 404;
+  // show the offline estimate instead of an error (the seeded profiles still surface errors).
+  const call = c ? <T,>(p: Promise<T>) => p.catch(() => null) : <T,>(p: Promise<T>) => p;
+  const r = await call(live(async (signal) => {
     const pfo = await api.onboarding({ answers: toPfoAnswers(inputs.situation, inputs.availableCash) }, { signal });
     // Send the user's quote only if it's a complete, live one; otherwise the backend quotes
-    // the profile's open issue itself.
-    const quote = inputs.quote?.complete && !inputs.quoteMocked ? inputs.quote : null;
-    return api.analyze(profileId, { quote, pfo_factors: pfo.factors }, { signal });
-  }, 20000); // includes the Explanation Agent call
+    // the profile's open issue itself. The judge's profile always sends a complete quote,
+    // since its open issue is optional.
+    const quote = inputs.quote?.complete && (!inputs.quoteMocked || !!c) ? inputs.quote : null;
+    return api.analyze(profileId, { quote, pfo_factors: pfo.factors, custom_profile: c && customProfileIn(c) }, { signal });
+  }, 20000)); // includes the Explanation Agent call
   if (r) return { data: r, mocked: false };
+  if (c) return { mocked: true, data: offlineCustomAnalysis(c, inputs.quote, offlinePfo(inputs)) };
   return { mocked: true, data: snapshotFor(profileId).analysis };
+}
+
+function customProfileIn({ profile: p, display }: CustomProfile): CustomProfileIn {
+  return {
+    name: display.firstName,
+    vehicle_model: "Camry",
+    vehicle_year: p.vehicle_year,
+    mileage: p.mileage,
+    zip_code: p.zip_code,
+    loan_balance: p.loan_balance,
+    monthly_payment: p.monthly_payment,
+    insurance_premium: p.insurance_premium ?? null,
+    open_issue: p.open_issue,
+    bank: toBankSnapshotIn(bankFixtureFor(CUSTOM_PROFILE_ID)),
+  };
+}
+
+// Offline stand-in for POST /onboarding: the same credit-band -> APR table as the PFO Agent.
+const BAND_APR: Record<string, number> = { excellent: 0.055, good: 0.07, fair: 0.11, poor: 0.16 };
+
+function offlinePfo(inputs: OptionsInputs): PFOFactors {
+  const a = toPfoAnswers(inputs.situation, inputs.availableCash);
+  return { apr: (a.credit_band && BAND_APR[a.credit_band]) ?? null, down_payment: a.down_payment, car_usage: a.car_usage ?? "medium" };
 }
 
 // ---- Car Fund (Capital One Nessie savings account, simulated in fixture mode) ------------
 
 export async function startCarFund(profileId: string, monthly: number, target: number): Promise<Served<api.CarFund>> {
-  const r = await live(() => api.createCarFund(profileId, monthly, target), 5000);
+  // The judge's profile has no Nessie customer, so its Car Fund is always simulated.
+  const r = custom(profileId) ? null : await live(() => api.createCarFund(profileId, monthly, target), 5000);
   if (r) return { data: r, mocked: false };
   return { mocked: true, data: { account_id: "demo-car-fund", monthly_amount: monthly, target_amount: target, simulated: true } };
 }
@@ -157,7 +225,7 @@ export type BankSnapshot = {
 };
 
 export function bankAccountsFor(profileId: string) {
-  const f = BANK_FIXTURES[profileId] ?? BANK_FIXTURES.dev;
+  const f = bankFixtureFor(profileId);
   return { customerMask: f.customerMask, accounts: f.accounts };
 }
 
@@ -167,7 +235,7 @@ const monthlyAvg = (items: { amount: number; date: string }[]) => {
 };
 
 export async function connectBank(profileId: string, accountIds: string[]): Promise<Served<BankSnapshot>> {
-  const f = BANK_FIXTURES[profileId] ?? BANK_FIXTURES.dev;
+  const f = bankFixtureFor(profileId);
   const insurance = f.purchases.filter((p) => /insurance/i.test(p.description));
   const accounts = f.accounts.filter((a) => accountIds.includes(a.id));
   const income = Math.round(monthlyAvg(f.deposits));

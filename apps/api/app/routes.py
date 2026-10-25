@@ -7,6 +7,7 @@ from app.clients import llm, nessie
 from app.cost_agent import build_handoff, quote_for_profile
 from app.engine import affordability, simulate
 from app.models.schemas import (
+    CUSTOM_PROFILE_ID,
     AnalysisRequest,
     AnalysisResult,
     CarFundRequest,
@@ -57,10 +58,20 @@ def _profile_record(profile_id: str) -> dict:
     return next(p for p in load_profile_records() if p.get("id") == profile_id)
 
 
+def _profile_and_snapshot(req: AnalysisRequest) -> tuple[Profile, dict, dict]:
+    """(profile, Nessie snapshot, raw profile record) for a seeded profile or the judge's own."""
+    if req.profile_id != CUSTOM_PROFILE_ID:
+        profile = _profile_or_404(req.profile_id)
+        return profile, nessie.get_snapshot(profile), _profile_record(profile.id)
+    if req.custom_profile is None:
+        raise HTTPException(422, "custom_profile is required when profile_id is 'custom'")
+    profile = req.custom_profile.to_profile()
+    return profile, req.custom_profile.bank.model_dump(), profile.model_dump()
+
+
 @router.post("/analyze", response_model=AnalysisResult)
 def analyze(req: AnalysisRequest):
-    profile = _profile_or_404(req.profile_id)
-    snapshot = nessie.get_snapshot(profile)
+    profile, snapshot, record = _profile_and_snapshot(req)
     afford = affordability.compute(snapshot)
     mkt = _market_data(profile)
 
@@ -68,12 +79,17 @@ def analyze(req: AnalysisRequest):
     # PFO factors (from POST /onboarding, or defaults) -> the inputs krt.score() needs.
     pfo = req.pfo_factors or PFOFactors(down_payment=req.down_payment)
     try:
-        quote = req.quote or quote_for_profile(_profile_record(profile.id), date.today().year)
+        quote = req.quote or quote_for_profile(record, date.today().year)
         if quote.profile_id not in (None, profile.id):
             raise ValueError(f"Quote is for profile '{quote.profile_id}', not '{profile.id}'")
         handoff = build_handoff(quote, pfo)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
+    if profile.id == CUSTOM_PROFILE_ID:
+        # market.json's "custom" entry is a generic Camry; use the Cost Agent's value for this car.
+        v = handoff.vehicle
+        mkt = mkt.model_copy(update={"current_vehicle_value_low": v.private_sale_low,
+                                     "current_vehicle_value_high": v.private_sale_high})
 
     # KRT engine: monthly costs, recommendation, and suggested Toyota models.
     analysis = simulate.run(profile, mkt, afford, req, snapshot, **handoff.krt_arguments())

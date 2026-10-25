@@ -1,6 +1,8 @@
 // MOCK bank data for the demo "connect your bank" flow. Numbers copied from the team's
 // apps/api/app/fixtures/nessie.json (origin/main) so the frontend matches the backend fixtures.
 // Replace with a real Nessie-backed endpoint once the backend exposes one.
+import type { BankSnapshotIn } from "@/lib/api";
+import { CUSTOM_PROFILE_ID, loadCustomProfile, type CustomFinances } from "./customProfile";
 
 export type BankTxn = { amount: number; date: string; description: string };
 export type BankAccount = { id: string; type: "Checking" | "Savings"; mask: string; balance: number };
@@ -48,3 +50,40 @@ export const BANK_FIXTURES: Record<string, BankFixture> = {
     ],
   },
 };
+
+// MOCK: three months of sandbox history built from the finances the judge typed into their profile.
+function fixtureFromFinances(f: CustomFinances): BankFixture {
+  const months = ["2026-08", "2026-09", "2026-10"];
+  const insurance = f.carInsurance ?? 0;
+  const other = Math.max(0, f.monthlySpending - insurance);
+  return {
+    customerMask: "7E05",
+    accounts: [
+      { id: "acc-custom-chk", type: "Checking", mask: "3318", balance: f.checking },
+      { id: "acc-custom-sav", type: "Savings", mask: "6042", balance: f.savings },
+    ],
+    deposits: months.map((m) => ({ amount: f.monthlyIncome, date: `${m}-01`, description: "Payroll" })),
+    purchases: months.flatMap((m) => [
+      ...(insurance ? [{ amount: insurance, date: `${m}-05`, description: "Auto insurance" }] : []),
+      { amount: other, date: `${m}-15`, description: "Monthly spending" },
+    ]),
+  };
+}
+
+export function bankFixtureFor(profileId: string): BankFixture {
+  if (profileId === CUSTOM_PROFILE_ID) {
+    const c = loadCustomProfile();
+    if (c) return fixtureFromFinances(c.finances);
+  }
+  return BANK_FIXTURES[profileId] ?? BANK_FIXTURES.dev;
+}
+
+// The fixture in POST /analyze's custom_profile.bank shape (fixtures/nessie.json field names).
+export function toBankSnapshotIn(f: BankFixture): BankSnapshotIn {
+  const txn = (t: BankTxn) => ({ amount: t.amount, transaction_date: t.date, description: t.description });
+  return {
+    accounts: f.accounts.map((a) => ({ type: a.type, balance: a.balance })),
+    deposits: f.deposits.map(txn),
+    purchases: f.purchases.map(txn),
+  };
+}

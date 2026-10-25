@@ -64,5 +64,24 @@
       {"shop": "North Austin Toyota Service", "estimate": 420, "source": "fixture"},
       {"shop": "Neighborhood Auto", "estimate": 310, "source": "fixture"}
     ]
+  },
+  "custom": {
+    "current_vehicle_value_low": 0,
+    "current_vehicle_value_high": 0,
+    "scheduled_maintenance": [
+      {"name": "Oil and filter change", "cost": 75, "interval": 5000},
+      {"name": "Tire rotation", "cost": 30, "interval": 5000},
+      {"name": "Engine and cabin air filters", "cost": 90, "interval": 30000},
+      {"name": "Brake pads", "cost": 300, "interval": 40000},
+      {"name": "Coolant flush", "cost": 150, "interval": 100000}
+    ],
+    "replacement_options": [
+      {"name": "2026 Corolla LE", "price": 24500, "kind": "new"},
+      {"name": "2026 Corolla Cross L", "price": 25335, "kind": "new"},
+      {"name": "2026 Camry Hybrid LE", "price": 29000, "kind": "new"},
+      {"name": "2026 RAV4 Hybrid LE", "price": 31900, "kind": "new"},
+      {"name": "2026 Sienna LE", "price": 40120, "kind": "new"}
+    ],
+    "repair_quotes": []
   }
 }
