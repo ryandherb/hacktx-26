@@ -2,7 +2,7 @@ from datetime import date
 
 from fastapi import APIRouter, HTTPException
 
-from app.clients import llm, nessie, serpapi
+from app.clients import llm, nessie
 from app.cost_agent import build_handoff, quote_for_profile
 from app.engine import affordability, simulate
 from app.models.schemas import (
@@ -14,7 +14,7 @@ from app.models.schemas import (
     PFOFactors,
     Profile,
 )
-from app.seeds.loader import get_profile, load_profiles
+from app.seeds.loader import get_profile, load_fixture, load_profiles
 from app.seeds.pre_quote_profiles import load_profile_records
 
 router = APIRouter()
@@ -25,6 +25,14 @@ def _profile_or_404(profile_id: str) -> Profile:
     if not profile:
         raise HTTPException(404, f"Unknown profile '{profile_id}'")
     return profile
+
+
+def _market_data(profile: Profile) -> MarketData:
+    """Vehicle value, maintenance, and replacement options from app/fixtures/market.json."""
+    data = load_fixture("market").get(profile.id)
+    if data is None:
+        raise HTTPException(404, f"No market data for profile '{profile.id}'")
+    return MarketData(**data)
 
 
 @router.get("/health")
@@ -39,7 +47,7 @@ def profiles():
 
 @router.get("/market/{profile_id}", response_model=MarketData)
 def market(profile_id: str):
-    return serpapi.get_market_data(_profile_or_404(profile_id))
+    return _market_data(_profile_or_404(profile_id))
 
 
 def _profile_record(profile_id: str) -> dict:
@@ -52,7 +60,7 @@ def analyze(req: AnalysisRequest):
     profile = _profile_or_404(req.profile_id)
     snapshot = nessie.get_snapshot(profile)
     afford = affordability.compute(snapshot)
-    mkt = serpapi.get_market_data(profile)
+    mkt = _market_data(profile)
 
     # Cost Agent quote (from POST /quote, or priced here from the profile's open issue) and
     # PFO factors (from POST /onboarding, or defaults) -> the inputs krt.score() needs.

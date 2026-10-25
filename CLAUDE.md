@@ -19,7 +19,7 @@ Cost Agent (repair quote or manual input) -> PFO Agent (finance Q&A -> structure
     `replacement.py`, `valuation.py`, `repair_costs.py` + `cost_tables.py`, `vehicle_value.py`
   - `app/pre_quote_*.py` survey (#1); `app/cost_agent.py`, `repair_classifier.py`, `pfo_agent.py`,
     `cost_routes.py` Cost + PFO Agents (#2)
-  - `app/clients/` external wrappers: `nessie.py`, `serpapi.py` (SQLite-cached), `llm.py` (the one
+  - `app/clients/` external wrappers: `nessie.py`, `llm.py` (the one
     LLM client), `muse.py` (cached JSON classify/extract on top of `llm._complete`)
   - `scripts/` `export_demo_snapshot.py` (frontend offline data), `llm_smoke_check.py` (live key check)
   - `app/models/schemas.py` all request/response models
@@ -55,7 +55,6 @@ npm run lint
   matching TypeScript type in `apps/web/lib/api.ts`.
 - Keep the `simulate.run()` signature stable unless you update `routes.py` and its callers.
 - Backend stays stateless. PFO conversation state lives in the client and is sent each turn.
-- SerpApi calls go through `serpapi.search()` so they are cached. Don't call SerpApi directly.
 - Nessie endpoints and field names should be verified against http://api.nessieisreal.com
   docs before relying on live mode.
 - All data is synthetic. Show the "estimates, not financial advice" disclaimer wherever

@@ -32,7 +32,7 @@ def _profile_mileage(profile: dict | None) -> int | None:
 
 
 def nearby_shops(profile_id: str | None) -> list[RepairShop]:
-    """Fixture shops for demo profiles. Live mode goes through serpapi.search() after merging."""
+    """Fixture shops for demo profiles."""
     if profile_id is None:
         return []
     with SHOPS_FIXTURE.open(encoding="utf-8") as fixture:

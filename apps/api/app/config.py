@@ -11,8 +11,6 @@ class Settings(BaseSettings):
     nessie_api_key: str = ""
     nessie_base_url: str = "http://api.nessieisreal.com"
 
-    serpapi_api_key: str = ""
-
     # LLM (OpenAI-compatible chat completions), shared by the Cost Agent, PFO Agent, and
     # Explanation Agent. LLM_PROVIDER=none uses deterministic fallbacks only.
     # Empty model / base URL / reasoning effort use the provider's defaults in app/clients/llm.py

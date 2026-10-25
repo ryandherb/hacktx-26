@@ -128,7 +128,7 @@ export default function Home() {
             </section>
 
             <section className="rounded-lg border p-4 text-sm" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-              <h2 className="mb-2 font-medium">Market (from SerpApi)</h2>
+              <h2 className="mb-2 font-medium">Market</h2>
               <p>
                 Current car value: {money(result.market.current_vehicle_value_low)}–
                 {money(result.market.current_vehicle_value_high)}
