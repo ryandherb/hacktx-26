@@ -75,6 +75,9 @@ export type PFOFactors = {
   credit_confidence?: "low" | "medium" | "high";
 };
 
+// Short pros/cons for one option, shown under its card.
+export type OptionNotes = { available: boolean; pros: string[]; cons: string[] };
+
 export type Analysis = {
   profile_id: string;
   recommendation: "keep" | "trade" | "refinance";
@@ -87,6 +90,7 @@ export type Analysis = {
   market: Market; // always set by /analyze
   explanation: string; // short summary for the results card
   explanation_details: string; // longer version for the "more details" drop-down
+  option_notes: Partial<Record<"keep" | "trade" | "refinance", OptionNotes>>;
   curve: CurvePoint[]; // legacy chart data; empty now
   crossover_month: number | null;
 };

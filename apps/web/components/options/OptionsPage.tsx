@@ -36,6 +36,7 @@ export default function OptionsPage({ open, vehicleLabel, result, mocked, onBack
     trade: k.trade_affordable ? null : "Over your comfortable payment",
     refinance: hasLoan ? null : "No car loan to refinance",
   };
+  const notes = result.option_notes ?? {};
   const ranked = (["keep", "trade", "refinance"] as OptionId[]).sort((x, y) => (x === top ? -1 : y === top ? 1 : 0));
   const pick = k.suggested_models[0];
 
@@ -65,7 +66,9 @@ export default function OptionsPage({ open, vehicleLabel, result, mocked, onBack
               </p>
               <p className="mt-2 text-xl font-extrabold">{OPTION_LABELS[id][0]}</p>
               <p className="text-[15px] text-neutral-600">{OPTION_LABELS[id][1]}</p>
-              {note[id] && <p className="mt-2 text-sm font-semibold text-neutral-500">{note[id]}</p>}
+              {notes[id] ? <ProsCons pros={notes[id].pros} cons={notes[id].cons} /> : note[id] && (
+                <p className="mt-2 text-sm font-semibold text-neutral-500">{note[id]}</p>
+              )}
             </div>
           );
         })}
@@ -109,5 +112,26 @@ export default function OptionsPage({ open, vehicleLabel, result, mocked, onBack
         Estimates only, not financial advice.{mocked && " Sample results: the scoring service isn't reachable from this site, so these come from a saved run of it."}
       </p>
     </div>
+  );
+}
+
+// Short pros/cons under each option card, so the options we didn't recommend make sense too.
+function ProsCons({ pros, cons }: { pros: string[]; cons: string[] }) {
+  if (!pros.length && !cons.length) return null;
+  return (
+    <ul className="mt-4 space-y-1.5 border-t border-neutral-200 pt-3 text-[14px] leading-snug">
+      {pros.map((p) => (
+        <li key={`+${p}`} className="flex gap-2">
+          <span aria-hidden className="font-bold text-emerald-700">✓</span>
+          <span><span className="sr-only">Pro: </span>{p}</span>
+        </li>
+      ))}
+      {cons.map((c) => (
+        <li key={`-${c}`} className="flex gap-2 text-neutral-600">
+          <span aria-hidden className="font-bold text-[#EB0A1E]">✕</span>
+          <span><span className="sr-only">Con: </span>{c}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

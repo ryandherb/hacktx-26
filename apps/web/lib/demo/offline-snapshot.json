@@ -213,6 +213,39 @@
       },
       "explanation": "Repairing your 2012 Camry is your best move: about $226 a month, compared with $377 to trade in. The repair costs about 130% of what your car is worth, but keeping it is still cheaper each month than trading in. Estimates, not financial advice.",
       "explanation_details": "Repairing and keeping your current car looks like the best move. Estimated monthly cost: keeping $226, trading $377. The repair is estimated at about $4,950. That's about 130% of what the car is worth, and after paying for it your savings would cover about 1.5 months of spending. The car has about 26% of its expected life left. If you'd rather trade in, the best fit is 2021 Corolla LE (CPO) at $19,500: about $185 a month loan payment with $6,000 down (lowest monthly cost of the cars that fit; saves ~$20/mo on gas; certified pre-owned with Toyota warranty). With that car, insurance would go up about $46 a month and you'd save about $20 a month on gas. You have about $1,467 left over each month, and a payment up to $1,167 looks comfortable. Prices and recommendations are estimates built on synthetic data, not financial advice.",
+      "option_notes": {
+        "keep": {
+          "available": true,
+          "pros": [
+            "Lowest monthly cost: about $226/mo",
+            "No new loan or down payment"
+          ],
+          "cons": [
+            "$4,950 repair bill up front",
+            "Repair is about 130% of what the car is worth"
+          ]
+        },
+        "trade": {
+          "available": true,
+          "pros": [
+            "Newer car: 2021 Corolla LE (CPO)",
+            "Skip the $4,950 repair",
+            "Saves about $20/mo on gas"
+          ],
+          "cons": [
+            "Costs about $377/mo all-in",
+            "$6,000 down payment",
+            "Insurance goes up about $46/mo"
+          ]
+        },
+        "refinance": {
+          "available": false,
+          "pros": [],
+          "cons": [
+            "You don't have a car loan to refinance"
+          ]
+        }
+      },
       "curve": [],
       "crossover_month": null
     }
@@ -420,6 +453,45 @@
       },
       "explanation": "Repairing your 2010 Corolla is your best move: about $128 a month, compared with $449 to trade in. A new car payment doesn't fit your budget right now. Estimates, not financial advice.",
       "explanation_details": "Repairing and keeping your current car looks like the best move. Estimated monthly cost: keeping $128, trading $449, refinancing $146. The repair is estimated at about $1,450. That's about 64% of what the car is worth, and it costs more than your current savings. The car has about 15% of its expected life left. If you'd rather trade in, the best fit is 2019 Corolla LE (used) at $16,900: about $308 a month loan payment with $500 down (lowest monthly cost, but over your comfortable payment). With that car, insurance would go up about $43 a month and you'd save about $11 a month on gas. You have about $50 left over each month, so there's no room for a new car payment right now. Prices and recommendations are estimates built on synthetic data, not financial advice.",
+      "option_notes": {
+        "keep": {
+          "available": true,
+          "pros": [
+            "Lowest monthly cost: about $128/mo",
+            "No new loan or down payment"
+          ],
+          "cons": [
+            "$1,450 repair bill up front",
+            "Repair costs more than your current savings",
+            "Car has only about 15% of its expected life left"
+          ]
+        },
+        "trade": {
+          "available": true,
+          "pros": [
+            "Newer car: 2019 Corolla LE (used)",
+            "Skip the $1,450 repair",
+            "Saves about $11/mo on gas"
+          ],
+          "cons": [
+            "Costs about $449/mo all-in",
+            "$500 down payment",
+            "Over your comfortable monthly payment"
+          ]
+        },
+        "refinance": {
+          "available": true,
+          "pros": [
+            "Loan payment drops to about $0/mo",
+            "Keep your car, no new purchase"
+          ],
+          "cons": [
+            "Still pay the $1,450 repair",
+            "A longer loan can mean more interest overall",
+            "Needs a credit check"
+          ]
+        }
+      },
       "curve": [],
       "crossover_month": null
     }

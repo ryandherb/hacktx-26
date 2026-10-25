@@ -95,6 +95,14 @@ class KRTResult(BaseModel):
     suggested_models: list[SuggestedModel]
     trade_affordable: bool
 
+class OptionNotes(BaseModel):
+    """Short pros/cons for one option (app/option_notes.py), shown under each option card."""
+
+    available: bool = True  # false e.g. for refinance with no car loan
+    pros: list[str] = Field(default_factory=list)
+    cons: list[str] = Field(default_factory=list)
+
+
 class AnalysisResult(BaseModel):
     profile_id: str = ""
     recommendation: Literal["keep", "refinance", "trade"]
@@ -110,6 +118,8 @@ class AnalysisResult(BaseModel):
     market: MarketData | None = None
     explanation: str = ""  # short, plain-language summary (Explanation Agent)
     explanation_details: str = ""  # longer version with the full numbers (drop-down)
+    # Pros/cons for "keep", "trade", "refinance", so the options we didn't recommend make sense too.
+    option_notes: dict[str, OptionNotes] = Field(default_factory=dict)
 
     # Legacy chart data for the old dashboard (app/page.tsx); empty now.
     curve: list[CurvePoint] = Field(default_factory=list)

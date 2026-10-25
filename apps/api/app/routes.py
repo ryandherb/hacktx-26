@@ -2,6 +2,7 @@ from datetime import date
 
 from fastapi import APIRouter, HTTPException
 
+from app import option_notes
 from app.clients import llm, nessie
 from app.cost_agent import build_handoff, quote_for_profile
 from app.engine import affordability, simulate
@@ -76,16 +77,15 @@ def analyze(req: AnalysisRequest):
     # KRT engine: monthly costs, recommendation, and suggested Toyota models.
     analysis = simulate.run(profile, mkt, afford, req, snapshot, **handoff.krt_arguments())
 
-    explanation = llm.explain(
-        {
-            "recommendation": analysis.recommendation,
-            "krt": analysis.result,
-            "vehicle": f"{profile.vehicle_year} {profile.vehicle_model}",
-            "repair_cost": handoff.repair_cost,
-            "affordability": afford,
-            "horizon_months": req.horizon_months,
-        }
-    )
+    context = {
+        "recommendation": analysis.recommendation,
+        "krt": analysis.result,
+        "vehicle": f"{profile.vehicle_year} {profile.vehicle_model}",
+        "repair_cost": handoff.repair_cost,
+        "affordability": afford,
+        "horizon_months": req.horizon_months,
+    }
+    explanation = llm.explain(context)
     return analysis.model_copy(
         update={
             "profile_id": profile.id,
@@ -93,6 +93,7 @@ def analyze(req: AnalysisRequest):
             "market": mkt,
             "explanation": explanation.summary,
             "explanation_details": explanation.details,
+            "option_notes": option_notes.build(context),
         }
     )
 
