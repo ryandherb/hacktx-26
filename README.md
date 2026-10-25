@@ -93,13 +93,21 @@ apps/
 | GET | `/health` | exists | liveness |
 | GET | `/profiles` | exists | synthetic Toyota customers |
 | GET | `/market/{profile_id}` | exists | vehicle value, replacement options, repair shops |
-| POST | `/analyze` | exists | runs the full pipeline and returns curve, recommendation, affordability, explanation |
+| POST | `/pre-quote-survey` | exists | fills repair, model, year, location from the profile; asks for what's missing |
+| POST | `/quote` | exists | Cost Agent: classify the issue and return a repair estimate + car value, or `needs_manual: true` |
+| POST | `/onboarding` | exists | PFO Agent: one question per turn (or all answers at once), returns `PFOFactors` |
+| POST | `/analyze` | exists | KRT engine + Explanation Agent: recommendation, monthly costs, suggested Toyotas, explanation |
 | POST | `/car-fund` | exists | creates a Nessie "Car Fund" savings account |
-| POST | `/quote` | planned | Cost Agent: classify the issue and return a repair estimate, or `needs_manual: true` |
-| POST | `/onboarding` | planned | PFO Agent: takes the transcript, returns the next question or the final factors |
 
-`/analyze` will accept `repair_cost` and `pfo_factors` in the request body once those
-steps exist.
+`/analyze` takes the complete `/quote` result as `quote` and the `/onboarding` factors as
+`pfo_factors`, calls `build_handoff()`, and passes `repair_cost`, `car_value` (trade-in), and
+`pfo_factors` to `krt.score()`. Without a `quote` it prices the profile's `open_issue` with the
+same Cost Agent; without `pfo_factors` it uses the defaults. Feature notes: `docs/cost-agent.md`,
+`docs/pre-quote-survey.md`.
+
+The frontend calls these in order. When no backend is reachable (the Vercel demo), it falls back
+to `apps/web/lib/demo/offline-snapshot.json`, a saved run of the real backend. Regenerate it after
+engine or template changes: `cd apps/api && .venv/bin/python -m scripts.export_demo_snapshot`.
 
 ## Quick start
 

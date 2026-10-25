@@ -1,8 +1,10 @@
 """LLM layer. The LLM parses messy text and explains results. It never computes them.
 
-`_complete` talks to any OpenAI-compatible chat completions API (OpenAI, Meta, Groq,
-OpenRouter, Gemini's compat endpoint, ...). Configure it with LLM_PROVIDER, LLM_API_KEY,
-LLM_MODEL and optionally LLM_BASE_URL.
+`_complete` is the one LLM client for the whole backend: the Cost Agent and PFO Agent
+(via app/clients/muse.py) and the Explanation Agent all use it. It talks to any
+OpenAI-compatible chat completions API (Meta Muse, OpenAI, Groq, OpenRouter, Gemini's compat
+endpoint, ...). Configure it with LLM_PROVIDER, LLM_API_KEY and optionally LLM_MODEL,
+LLM_BASE_URL, LLM_REASONING_EFFORT and LLM_MAX_TOKENS.
 
 `explain` falls back to a deterministic template when USE_FIXTURES=true, LLM_PROVIDER=none,
 LLM_API_KEY is empty, the request fails, or the reply contains a number it wasn't given.
@@ -36,6 +38,11 @@ DEFAULT_BASE_URLS = {
     "openrouter": "https://openrouter.ai/api/v1",
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
 }
+
+# Provider defaults used when LLM_MODEL / LLM_REASONING_EFFORT are empty.
+DEFAULT_MODELS = {"meta": "muse-spark-1.3", "muse": "muse-spark-1.3"}
+# Muse Spark reasons before answering; "minimal" keeps those tokens from eating max_tokens.
+DEFAULT_REASONING_EFFORT = {"meta": "minimal", "muse": "minimal"}
 
 # Recommendation values: "keep" | "trade" | "refinance".
 # Older names from the scaffold and earlier plans map onto them.
@@ -130,18 +137,34 @@ def _content_from_response(data: dict) -> str:
     return content.strip()
 
 
-def _complete(prompt: str, system: str | None = None, temperature: float = 0.2) -> str:
+def _complete(
+    prompt: str,
+    system: str | None = None,
+    temperature: float = 0.2,
+    max_tokens: int | None = None,
+) -> str:
     """Send one chat completion request and return the reply text. Raises LLMError."""
     s = get_settings()
     if not llm_configured():
         raise LLMError(f"LLM provider '{s.llm_provider}' is not configured")
-    if not s.llm_model.strip():
+    provider = s.llm_provider.strip().lower()
+    model = s.llm_model.strip() or DEFAULT_MODELS.get(provider, "")
+    if not model:
         raise LLMError("LLM_MODEL is not set")
 
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
+    body: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens or s.llm_max_tokens,
+    }
+    effort = s.llm_reasoning_effort.strip() or DEFAULT_REASONING_EFFORT.get(provider, "")
+    if effort:
+        body["reasoning_effort"] = effort
 
     try:
         r = httpx.post(
@@ -150,7 +173,7 @@ def _complete(prompt: str, system: str | None = None, temperature: float = 0.2) 
                 "Authorization": f"Bearer {s.llm_api_key.strip()}",
                 "Content-Type": "application/json",
             },
-            json={"model": s.llm_model.strip(), "messages": messages, "temperature": temperature},
+            json=body,
             timeout=s.llm_timeout_seconds,
         )
         r.raise_for_status()
@@ -323,6 +346,11 @@ def _summary_template(facts: dict) -> str:
         parts.append(f"The repair would cost about {pct:g}% of what your car is worth.")
     elif rec == "refinance" and _num(krt.get("refi_payment")):
         parts.append(f"Your new loan payment would be about {_money(krt['refi_payment'])} a month.")
+    elif rec == "keep" and _num(pct) and pct >= 100:
+        parts.append(
+            f"The repair costs about {pct:g}% of what your car is worth, but keeping it is "
+            "still cheaper each month than trading in."
+        )
     elif rec == "keep" and _num(pct):
         parts.append(f"The repair is about {pct:g}% of what your car is worth, so fixing it pays off.")
 
@@ -515,6 +543,7 @@ def explain(context: dict) -> Explanation:
         reply = _complete(
             "Explain this result. Facts (JSON):\n" + json.dumps(facts, default=str),
             system=EXPLAIN_SYSTEM_PROMPT,
+            max_tokens=max(get_settings().llm_max_tokens, 1500),
         )
         data = json.loads(_strip_code_fence(reply))
         if not isinstance(data, dict):

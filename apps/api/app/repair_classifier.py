@@ -7,7 +7,7 @@ catalog is the deterministic fallback, so the agent works with LLM_PROVIDER=none
 from pydantic import BaseModel, Field, ValidationError
 
 from .clients import muse
-from .models.cost_schemas import RepairClassification
+from .models.schemas import RepairClassification
 from .engine.cost_tables import REPAIR_CATEGORIES, SYMPTOMS, normalize_text
 
 MIN_CONFIDENCE = 0.7

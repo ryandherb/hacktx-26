@@ -1,0 +1,427 @@
+{
+  "maria": {
+    "survey": {
+      "profile_id": "maria",
+      "answers": {
+        "repair_type": "Transmission slips when shifting from 2nd to 3rd, and the RPMs jump on the highway.",
+        "vehicle_model": "Camry",
+        "vehicle_year": 2012,
+        "location": "78705"
+      },
+      "missing_fields": [],
+      "questions": [],
+      "complete": true,
+      "quote_input": {
+        "repair_type": "Transmission slips when shifting from 2nd to 3rd, and the RPMs jump on the highway.",
+        "vehicle_model": "Camry",
+        "vehicle_year": 2012,
+        "location": "78705"
+      }
+    },
+    "quote": {
+      "profile_id": "maria",
+      "quote_input": {
+        "repair_type": "Transmission slips when shifting from 2nd to 3rd, and the RPMs jump on the highway.",
+        "vehicle_model": "Camry",
+        "vehicle_year": 2012,
+        "location": "78705"
+      },
+      "classification": {
+        "category": "transmission",
+        "label": "Transmission rebuild or replacement",
+        "kind": "repair",
+        "quotable": true,
+        "confidence": 0.9,
+        "method": "keyword",
+        "reason": "Matched to Transmission rebuild or replacement."
+      },
+      "needs_manual": false,
+      "questions": [],
+      "repair": {
+        "source": "table",
+        "category": "transmission",
+        "label": "Transmission rebuild or replacement",
+        "repair_cost_low": 2750.0,
+        "repair_cost_high": 4950.0,
+        "repair_cost_estimate": 4950.0,
+        "model_multiplier": 1.0,
+        "age_multiplier": 1.1,
+        "region_multiplier": 1.0,
+        "region": "TX",
+        "shop": null
+      },
+      "vehicle": {
+        "model_recognized": true,
+        "vehicle_age_years": 14,
+        "mileage": 148000,
+        "mileage_source": "profile",
+        "private_sale_low": 4250.0,
+        "private_sale_high": 5200.0,
+        "private_sale_estimate": 4750.0,
+        "trade_in_low": 3400.0,
+        "trade_in_high": 4150.0,
+        "trade_in_estimate": 3800.0
+      },
+      "nearby_shops": [
+        {
+          "name": "Austin Transmission Co.",
+          "source": "fixture"
+        },
+        {
+          "name": "Central TX Auto Care",
+          "source": "fixture"
+        }
+      ],
+      "complete": true,
+      "disclaimer": "Estimates based on synthetic data, not financial advice. Get a real shop quote before deciding."
+    },
+    "analysis": {
+      "profile_id": "maria",
+      "recommendation": "keep",
+      "result": {
+        "keepResult": 225.87,
+        "refinanceResult": 225.87,
+        "tradeResult": 377.33,
+        "repair_ratio": 1.3026315789473684,
+        "pr_runway": 1.5478739870999862,
+        "remaining_life": 0.26,
+        "new_payment": 185.28,
+        "refi_payment": 0.0,
+        "suggested_models": [
+          {
+            "name": "2021 Corolla LE (CPO)",
+            "price": 19500.0,
+            "kind": "cpo",
+            "seats": 5,
+            "mpg": 35.0,
+            "body": "sedan",
+            "down_payment": 6000.0,
+            "new_payment": 185.28,
+            "insurance_delta": 45.79,
+            "fuel_delta": -20.4,
+            "monthly_cost": 377.33,
+            "reason": "lowest monthly cost of the cars that fit; saves ~$20/mo on gas; certified pre-owned with Toyota warranty"
+          },
+          {
+            "name": "2021 Camry LE (CPO)",
+            "price": 24500.0,
+            "kind": "cpo",
+            "seats": 5,
+            "mpg": 32.0,
+            "body": "sedan",
+            "down_payment": 6000.0,
+            "new_payment": 280.79,
+            "insurance_delta": 60.38,
+            "fuel_delta": -11.52,
+            "monthly_cost": 496.32,
+            "reason": "certified pre-owned with Toyota warranty"
+          },
+          {
+            "name": "2022 Camry Hybrid LE (CPO)",
+            "price": 26900.0,
+            "kind": "cpo",
+            "seats": 5,
+            "mpg": 51.0,
+            "body": "sedan",
+            "down_payment": 6000.0,
+            "new_payment": 326.63,
+            "insurance_delta": 67.38,
+            "fuel_delta": -50.14,
+            "monthly_cost": 510.54,
+            "reason": "saves ~$50/mo on gas; certified pre-owned with Toyota warranty"
+          }
+        ],
+        "trade_affordable": true
+      },
+      "new_monthly_payment": 185.28,
+      "suggested_models": null,
+      "apr": 0.055,
+      "down_payment": 6000.0,
+      "affordability": {
+        "monthly_income": 4600.0,
+        "monthly_spend": 3133.33,
+        "savings_balance": 9800.0,
+        "monthly_surplus": 1466.67,
+        "runway_months": 3.1,
+        "can_afford_payment": true,
+        "max_comfortable_payment": 1166.67
+      },
+      "market": {
+        "current_vehicle_value_low": 4200.0,
+        "current_vehicle_value_high": 5600.0,
+        "scheduled_maintenance": [
+          {
+            "cost": 75.0,
+            "interval": 5000
+          },
+          {
+            "cost": 30.0,
+            "interval": 5000
+          },
+          {
+            "cost": 90.0,
+            "interval": 30000
+          },
+          {
+            "cost": 300.0,
+            "interval": 40000
+          },
+          {
+            "cost": 150.0,
+            "interval": 100000
+          }
+        ],
+        "replacement_options": [
+          {
+            "name": "2021 Camry LE (CPO)",
+            "price": 24500,
+            "kind": "cpo"
+          },
+          {
+            "name": "2025 Camry LE",
+            "price": 29800,
+            "kind": "new"
+          },
+          {
+            "name": "2022 Camry Hybrid LE (CPO)",
+            "price": 26900,
+            "kind": "cpo"
+          },
+          {
+            "name": "2021 Corolla LE (CPO)",
+            "price": 19500,
+            "kind": "cpo"
+          },
+          {
+            "name": "2022 RAV4 Hybrid XLE (CPO)",
+            "price": 31500,
+            "kind": "cpo"
+          }
+        ],
+        "repair_quotes": [
+          {
+            "shop": "Austin Transmission Co.",
+            "estimate": 3200,
+            "source": "fixture"
+          },
+          {
+            "shop": "Central TX Auto Care",
+            "estimate": 2800,
+            "source": "fixture"
+          }
+        ]
+      },
+      "explanation": "Repairing your 2012 Camry is your best move: about $226 a month, compared with $377 to trade in. The repair costs about 130% of what your car is worth, but keeping it is still cheaper each month than trading in. Estimates, not financial advice.",
+      "explanation_details": "Repairing and keeping your current car looks like the best move. Estimated monthly cost: keeping $226, trading $377. The repair is estimated at about $4,950. That's about 130% of what the car is worth, and after paying for it your savings would cover about 1.5 months of spending. The car has about 26% of its expected life left. If you'd rather trade in, the best fit is 2021 Corolla LE (CPO) at $19,500: about $185 a month loan payment with $6,000 down (lowest monthly cost of the cars that fit; saves ~$20/mo on gas; certified pre-owned with Toyota warranty). With that car, insurance would go up about $46 a month and you'd save about $20 a month on gas. You have about $1,467 left over each month, and a payment up to $1,167 looks comfortable. Prices and recommendations are estimates built on synthetic data, not financial advice.",
+      "curve": [],
+      "crossover_month": null
+    }
+  },
+  "dev": {
+    "survey": {
+      "profile_id": "dev",
+      "answers": {
+        "repair_type": "A/C blows warm air, and there's a grinding noise when it kicks on.",
+        "vehicle_model": "Corolla",
+        "vehicle_year": 2010,
+        "location": "78741"
+      },
+      "missing_fields": [],
+      "questions": [],
+      "complete": true,
+      "quote_input": {
+        "repair_type": "A/C blows warm air, and there's a grinding noise when it kicks on.",
+        "vehicle_model": "Corolla",
+        "vehicle_year": 2010,
+        "location": "78741"
+      }
+    },
+    "quote": {
+      "profile_id": "dev",
+      "quote_input": {
+        "repair_type": "A/C blows warm air, and there's a grinding noise when it kicks on.",
+        "vehicle_model": "Corolla",
+        "vehicle_year": 2010,
+        "location": "78741"
+      },
+      "classification": {
+        "category": "noise",
+        "label": "Unusual noise",
+        "kind": "symptom",
+        "quotable": false,
+        "confidence": 0.9,
+        "method": "keyword",
+        "reason": "This describes a symptom that could come from several different problems. A shop diagnosis will give you a real quote."
+      },
+      "needs_manual": true,
+      "questions": [
+        {
+          "field": "manual_quote",
+          "prompt": "This describes a symptom that could come from several different problems. A shop diagnosis will give you a real quote. If you already have a quote, enter the total amount.",
+          "input_type": "number"
+        }
+      ],
+      "repair": null,
+      "vehicle": {
+        "model_recognized": true,
+        "vehicle_age_years": 16,
+        "mileage": 171000,
+        "mileage_source": "profile",
+        "private_sale_low": 2550.0,
+        "private_sale_high": 3100.0,
+        "private_sale_estimate": 2850.0,
+        "trade_in_low": 2050.0,
+        "trade_in_high": 2500.0,
+        "trade_in_estimate": 2250.0
+      },
+      "nearby_shops": [
+        {
+          "name": "South Austin Auto A/C",
+          "source": "fixture"
+        },
+        {
+          "name": "Quick Fix Garage",
+          "source": "fixture"
+        }
+      ],
+      "complete": false,
+      "disclaimer": "Estimates based on synthetic data, not financial advice. Get a real shop quote before deciding."
+    },
+    "analysis": {
+      "profile_id": "dev",
+      "recommendation": "keep",
+      "result": {
+        "keepResult": 128.35,
+        "refinanceResult": 145.68,
+        "tradeResult": 449.05,
+        "repair_ratio": 0.6444444444444445,
+        "pr_runway": -0.24811992763920654,
+        "remaining_life": 0.14500000000000002,
+        "new_payment": 307.66,
+        "refi_payment": 0.0,
+        "suggested_models": [
+          {
+            "name": "2019 Corolla LE (used)",
+            "price": 16900.0,
+            "kind": "used",
+            "seats": 5,
+            "mpg": 35.0,
+            "body": "sedan",
+            "down_payment": 500.0,
+            "new_payment": 307.66,
+            "insurance_delta": 42.73,
+            "fuel_delta": -10.69,
+            "monthly_cost": 449.05,
+            "reason": "lowest monthly cost, but over your comfortable payment"
+          },
+          {
+            "name": "2020 Prius L Eco (used)",
+            "price": 18400.0,
+            "kind": "used",
+            "seats": 5,
+            "mpg": 54.0,
+            "body": "hatchback",
+            "down_payment": 500.0,
+            "new_payment": 340.27,
+            "insurance_delta": 47.1,
+            "fuel_delta": -44.55,
+            "monthly_cost": 453.02,
+            "reason": "saves ~$45/mo on gas"
+          },
+          {
+            "name": "2020 Corolla Hybrid LE (used)",
+            "price": 18900.0,
+            "kind": "used",
+            "seats": 5,
+            "mpg": 50.0,
+            "body": "sedan",
+            "down_payment": 500.0,
+            "new_payment": 351.14,
+            "insurance_delta": 48.56,
+            "fuel_delta": -39.56,
+            "monthly_cost": 475.01,
+            "reason": "saves ~$40/mo on gas"
+          }
+        ],
+        "trade_affordable": false
+      },
+      "new_monthly_payment": 307.66,
+      "suggested_models": null,
+      "apr": 0.11,
+      "down_payment": 500.0,
+      "affordability": {
+        "monthly_income": 2266.67,
+        "monthly_spend": 2216.67,
+        "savings_balance": 900.0,
+        "monthly_surplus": 50.0,
+        "runway_months": 0.4,
+        "can_afford_payment": false,
+        "max_comfortable_payment": 0.0
+      },
+      "market": {
+        "current_vehicle_value_low": 2200.0,
+        "current_vehicle_value_high": 3200.0,
+        "scheduled_maintenance": [
+          {
+            "cost": 75.0,
+            "interval": 5000
+          },
+          {
+            "cost": 30.0,
+            "interval": 5000
+          },
+          {
+            "cost": 90.0,
+            "interval": 30000
+          },
+          {
+            "cost": 300.0,
+            "interval": 40000
+          },
+          {
+            "cost": 150.0,
+            "interval": 100000
+          }
+        ],
+        "replacement_options": [
+          {
+            "name": "2019 Corolla LE (used)",
+            "price": 16900,
+            "kind": "used"
+          },
+          {
+            "name": "2025 Corolla LE",
+            "price": 23000,
+            "kind": "new"
+          },
+          {
+            "name": "2020 Prius L Eco (used)",
+            "price": 18400,
+            "kind": "used"
+          },
+          {
+            "name": "2020 Corolla Hybrid LE (used)",
+            "price": 18900,
+            "kind": "used"
+          }
+        ],
+        "repair_quotes": [
+          {
+            "shop": "South Austin Auto A/C",
+            "estimate": 1150,
+            "source": "fixture"
+          },
+          {
+            "shop": "Quick Fix Garage",
+            "estimate": 980,
+            "source": "fixture"
+          }
+        ]
+      },
+      "explanation": "Repairing your 2010 Corolla is your best move: about $128 a month, compared with $449 to trade in. A new car payment doesn't fit your budget right now. Estimates, not financial advice.",
+      "explanation_details": "Repairing and keeping your current car looks like the best move. Estimated monthly cost: keeping $128, trading $449, refinancing $146. The repair is estimated at about $1,450. That's about 64% of what the car is worth, and it costs more than your current savings. The car has about 15% of its expected life left. If you'd rather trade in, the best fit is 2019 Corolla LE (used) at $16,900: about $308 a month loan payment with $500 down (lowest monthly cost, but over your comfortable payment). With that car, insurance would go up about $43 a month and you'd save about $11 a month on gas. You have about $50 left over each month, so there's no room for a new car payment right now. Prices and recommendations are estimates built on synthetic data, not financial advice.",
+      "curve": [],
+      "crossover_month": null
+    }
+  }
+}

@@ -1,6 +1,7 @@
-"""Issue #2: quotability, table and manual estimates, vehicle value, PFO, and the Muse client.
+"""Issue #2: quotability, table and manual estimates, vehicle value, PFO, and the shared LLM
+client as the Cost/PFO Agents use it (app/clients/muse.py -> app/clients/llm.py::_complete).
 
-Runs fully offline with the LLM disabled; Muse paths are exercised with fakes.
+Runs fully offline with the LLM disabled; LLM paths are exercised with fakes.
 """
 
 from pathlib import Path
@@ -9,15 +10,16 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from issue_1_pre_quote_survey.pre_quote_api import app as survey_app
-from issue_2_cost_agent.app import cost_config, pfo_agent, repair_classifier
-from issue_2_cost_agent.app.clients import muse
-from issue_2_cost_agent.cost_api import app
-from issue_2_cost_agent.app.engine.repair_costs import age_multiplier, estimate_from_table, state_from_location
-from issue_2_cost_agent.app.cost_agent import build_handoff
-from issue_2_cost_agent.app.cost_config import CostAgentSettings
-from issue_2_cost_agent.app.models.cost_schemas import CostQuoteResult, PFOFactors
-from issue_2_cost_agent.app.engine.vehicle_value import value_vehicle
+from app.main import app
+from app import pfo_agent, repair_classifier
+from app.clients import llm, muse
+from app.engine.repair_costs import age_multiplier, estimate_from_table, state_from_location
+from app.cost_agent import build_handoff
+from app.config import Settings
+from app.models.schemas import CostQuoteResult, PFOFactors
+from app.engine.vehicle_value import value_vehicle
+
+survey_app = app  # the survey and Cost Agent share the main app now
 
 client = TestClient(app)
 AS_OF = 2026
@@ -32,8 +34,8 @@ MARKET_VALUE_RANGES = {
 
 
 def use_settings(monkeypatch, **overrides):
-    settings = CostAgentSettings(_env_file=None, **overrides)
-    monkeypatch.setattr(cost_config, "get_cost_settings", lambda: settings)
+    settings = Settings(_env_file=None, **overrides)
+    monkeypatch.setattr(llm, "get_settings", lambda: settings)
     return settings
 
 
@@ -240,9 +242,9 @@ def test_unknown_profile_returns_404():
 
 def test_quote_route_does_not_call_llm_when_disabled(monkeypatch):
     def boom(*args, **kwargs):
-        pytest.fail("chat() must not run with LLM_PROVIDER=none")
+        pytest.fail("_complete() must not run with LLM_PROVIDER=none")
 
-    monkeypatch.setattr(muse, "chat", boom)
+    monkeypatch.setattr(llm, "_complete", boom)
     post("/quote", {"profile_id": "sam", "quote_input": {**MARIA_INPUT, "repair_type": "oxygen sensor"}})
 
 
@@ -471,7 +473,7 @@ def test_muse_client_posts_openai_style_request_and_caches(monkeypatch, tmp_path
         sent.append((url, headers, json))
         return FakeResponse('```json\n{"category": "brakes", "confidence": 0.9}\n```')
 
-    monkeypatch.setattr(muse.httpx, "post", fake_post)
+    monkeypatch.setattr(llm.httpx, "post", fake_post)
     first = muse.complete_json("sys", "user")
     second = muse.complete_json("sys", "user")
     assert first == second == {"category": "brakes", "confidence": 0.9}
@@ -480,13 +482,23 @@ def test_muse_client_posts_openai_style_request_and_caches(monkeypatch, tmp_path
     assert url == "https://api.meta.ai/v1/chat/completions"
     assert headers["Authorization"] == "Bearer secret"
     assert body["model"] == "muse-test" and body["temperature"] == 0
+    assert body["reasoning_effort"] == "minimal" and body["max_tokens"] == 1000  # Muse defaults
     assert [m["role"] for m in body["messages"]] == ["system", "user"]
+
+
+def test_muse_defaults_model_when_unset(monkeypatch, tmp_path):
+    use_settings(monkeypatch, llm_provider="meta", llm_api_key="k", llm_model="",
+                 llm_cache_path=str(tmp_path / "cache.sqlite3"))
+    sent = []
+    monkeypatch.setattr(llm.httpx, "post", lambda url, headers, json, timeout: sent.append(json) or FakeResponse("{}"))
+    muse.complete_json("sys", "user")
+    assert sent[0]["model"] == "muse-spark-1.3"
 
 
 @pytest.mark.parametrize("response", [FakeResponse("not json at all"), FakeResponse("[1, 2]"), FakeResponse("{}", 401)])
 def test_muse_client_returns_none_on_bad_reply_or_http_error(monkeypatch, tmp_path, response):
     use_settings(monkeypatch, llm_provider="meta", llm_api_key="k", llm_cache_path=str(tmp_path / "c.sqlite3"))
-    monkeypatch.setattr(muse.httpx, "post", lambda *a, **k: response)
+    monkeypatch.setattr(llm.httpx, "post", lambda *a, **k: response)
     assert muse.complete_json("sys", "user") is None
 
 
@@ -496,27 +508,25 @@ def test_muse_client_handles_timeout(monkeypatch, tmp_path):
     def timeout(*args, **kwargs):
         raise httpx.ReadTimeout("slow")
 
-    monkeypatch.setattr(muse.httpx, "post", timeout)
+    monkeypatch.setattr(llm.httpx, "post", timeout)
     assert muse.complete_json("sys", "user") is None
 
 
 @pytest.mark.parametrize("provider, key, enabled", [
     ("none", "k", False), ("meta", "", False), ("meta", "  ", False), ("META", "k", True), ("muse", "k", True),
 ])
-def test_llm_enabled_needs_provider_and_key(provider, key, enabled):
-    assert CostAgentSettings(_env_file=None, llm_provider=provider, llm_api_key=key).llm_enabled is enabled
+def test_llm_enabled_needs_provider_and_key(monkeypatch, provider, key, enabled):
+    use_settings(monkeypatch, llm_provider=provider, llm_api_key=key)
+    assert llm.llm_configured() is enabled
 
 
 def test_contract_fields_match_python_models():
-    from issue_2_cost_agent.app.models import cost_schemas
+    from app.models import schemas
 
-    # issue_2_cost_agent/web/lib before unpacking, apps/web/lib after.
-    here = Path(cost_schemas.__file__).resolve()
-    ts_path = next(p for p in (here.parents[2] / "web/lib/cost_api.ts", here.parents[3] / "web/lib/cost_api.ts")
-                   if p.exists())
+    ts_path = Path(schemas.__file__).resolve().parents[4] / "apps/web/lib/api.ts"
     ts = ts_path.read_text(encoding="utf-8")
-    for model in (cost_schemas.CostQuoteResult, cost_schemas.RepairEstimate, cost_schemas.VehicleValue,
-                  cost_schemas.OnboardingResult, cost_schemas.PfoAnswers, cost_schemas.PFOFactors,
-                  cost_schemas.CostAgentHandoff):
+    for model in (schemas.CostQuoteResult, schemas.RepairEstimate, schemas.VehicleValue,
+                  schemas.OnboardingResult, schemas.PfoAnswers, schemas.PFOFactors,
+                  schemas.CostAgentHandoff, schemas.PreQuoteSurveyResult, schemas.AnalysisRequest):
         for name in model.model_fields:
-            assert f"{name}" in ts, f"{model.__name__}.{name} missing from web/lib/cost_api.ts"
+            assert f"{name}" in ts, f"{model.__name__}.{name} missing from apps/web/lib/api.ts"

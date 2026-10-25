@@ -5,11 +5,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from issue_1_pre_quote_survey.app.seeds.pre_quote_profiles import survey_profile_records  # UNPACK: becomes from .seeds.pre_quote_profiles
+from .seeds.pre_quote_profiles import survey_profile_records
 
 from .pfo_agent import run_onboarding
 from .cost_agent import build_quote
-from .models.cost_schemas import CostQuoteRequest, CostQuoteResult, OnboardingRequest, OnboardingResult
+from .models.schemas import CostQuoteRequest, CostQuoteResult, OnboardingRequest, OnboardingResult
 
 router = APIRouter(tags=["Cost Agent"])
 

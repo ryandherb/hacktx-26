@@ -15,8 +15,13 @@ Cost Agent (repair quote or manual input) -> PFO Agent (finance Q&A -> structure
 
 - `apps/api/` FastAPI backend (Python 3, Pydantic v2, httpx)
   - `app/routes.py` endpoints; `app/main.py` app + CORS
-  - `app/engine/` deterministic math: `affordability.py`, `valuation.py`, `simulate.py` (planned: `krt.py`, `repair_costs.py`)
-  - `app/clients/` external wrappers: `nessie.py`, `llm.py`
+  - `app/engine/` deterministic math: `krt.py`, `simulate.py`, `affordability.py`, `insurance.py`,
+    `replacement.py`, `valuation.py`, `repair_costs.py` + `cost_tables.py`, `vehicle_value.py`
+  - `app/pre_quote_*.py` survey (#1); `app/cost_agent.py`, `repair_classifier.py`, `pfo_agent.py`,
+    `cost_routes.py` Cost + PFO Agents (#2)
+  - `app/clients/` external wrappers: `nessie.py`, `llm.py` (the one
+    LLM client), `muse.py` (cached JSON classify/extract on top of `llm._complete`)
+  - `scripts/` `export_demo_snapshot.py` (frontend offline data), `llm_smoke_check.py` (live key check)
   - `app/models/schemas.py` all request/response models
   - `app/seeds/toyota_profiles.json` synthetic profiles; `app/fixtures/*.json` offline data keyed by profile id
   - `app/config.py` settings from `apps/api/.env`

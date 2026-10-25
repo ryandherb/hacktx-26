@@ -1,5 +1,7 @@
-// "Your situation" questions. Topic ids are the frontend's PROPOSED contract for the PFO
-// questions (issue #2); the backend has not agreed to them yet.
+import type { CreditBand, IncomeStability, Level, PfoAnswers } from "@/lib/api";
+
+// "Your situation" questions. toPfoAnswers() at the bottom turns them into the PFO Agent's
+// answers for POST /onboarding.
 
 export type LifeChange = "new_job" | "graduating" | "internship" | "moving" | "none";
 
@@ -79,4 +81,40 @@ export function cardComplete(card: CardId, a: SituationAnswers): boolean {
     case "review": case "bank": return true; // bank completion is checked against advisor state
     default: return a[card] != null;
   }
+}
+
+// ---- "Your situation" answers -> PFO Agent answers (POST /onboarding) ----------------------
+// Plain lookups, no math. Questions the cards don't ask get a neutral default.
+// scripts/export_demo_snapshot.py (apps/api) mirrors this for the offline demo snapshot.
+
+const CREDIT_TO_BAND: Record<string, CreditBand> = {
+  "740+": "excellent",
+  "670–739": "good",
+  "580–669": "fair",
+  "Below 580": "poor",
+};
+
+const RELIANCE_TO_USAGE: Record<string, Level> = {
+  "Daily commute": "high",
+  "A few times a week": "medium",
+  "Rarely": "low",
+};
+
+function incomeStability(changes: LifeChange[]): IncomeStability {
+  if (changes.includes("internship")) return "at_risk"; // unpaid months ahead
+  if (changes.includes("new_job")) return "growing";
+  if (changes.includes("graduating")) return "unsure";
+  return "steady";
+}
+
+// availableCash comes from the bank step; it stands in when the down-payment card was skipped.
+export function toPfoAnswers(a: SituationAnswers, availableCash: number | null): PfoAnswers {
+  return {
+    down_payment: a.down_payment ?? availableCash ?? 0,
+    credit_band: (a.credit_band && CREDIT_TO_BAND[a.credit_band]) || "unknown",
+    other_debt_load: "none", // not asked yet
+    upcoming_major_expense: a.life_change.includes("moving"),
+    income_stability: incomeStability(a.life_change),
+    car_usage: (a.car_reliance && RELIANCE_TO_USAGE[a.car_reliance]) || "medium",
+  };
 }

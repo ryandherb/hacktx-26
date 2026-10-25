@@ -7,7 +7,7 @@ compares keep/repair, trade-in, and private sale.
 
 from typing import Literal
 
-from ..models.cost_schemas import VehicleValue
+from ..models.schemas import VehicleValue
 from .cost_tables import DEFAULT_MODEL, MILES_PER_YEAR, MODELS, TRADE_IN_RATIO, VALUE_FLOOR, model_key
 
 RANGE_SPREAD = 0.10  # +/- around the point estimate

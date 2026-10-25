@@ -201,7 +201,9 @@ export default function Dashboard() {
                   {advisor.state.step === "estimate" && <EstimateStep profile={profile} state={advisor.state} update={advisor.update} />}
                   {advisor.state.step === "situation" && <SituationStep profileId={profile.id} state={advisor.state} update={advisor.update} />}
                   {advisor.state.step === "options" && (
-                    <OptionsStep profileId={profile.id} onBack={() => advisor.update({ step: "situation" })}
+                    <OptionsStep profileId={profile.id}
+                      inputs={{ quote: advisor.state.quote, quoteMocked: advisor.state.quoteMocked, situation: advisor.state.situation, availableCash: advisor.state.bank?.availableCash ?? null }}
+                      onBack={() => advisor.update({ step: "situation" })}
                       onStartOver={() => { restart(); advisor.update({ view: "open" }); }}
                       onResult={(options, optionsMocked) => advisor.update({ options, optionsMocked })}
                       onView={() => advisor.update({ optionsPage: true })} />

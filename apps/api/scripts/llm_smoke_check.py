@@ -1,19 +1,21 @@
-"""Live check of the Muse key: lists models, then runs the real classify/extract paths.
+"""Live check of the LLM key (Meta Muse by default): lists models, runs the real Cost Agent
+classify and PFO extract paths, and one Explanation Agent call. All go through the shared
+client, app/clients/llm.py::_complete. Reads LLM_* from apps/api/.env.
 
-Run from the repo root:
-    apps/api/.venv/Scripts/python.exe -m issue_2_cost_agent.cost_muse_smoke_check
+Run from apps/api:
+    .venv/bin/python -m scripts.llm_smoke_check
 
-Costs a few cents at most; repeat runs hit the SQLite cache and cost nothing.
+Costs a few cents at most; repeat classify/extract runs hit the SQLite cache and cost nothing.
 """
 
 import sys
 
 import httpx
 
-from .app import cost_config
-from .app.repair_classifier import SYSTEM_PROMPT, _user_prompt, classify_with_llm
-from .app.clients.muse import chat
-from .app.pfo_agent import parse_with_llm
+from app.clients import llm
+from app.config import get_settings
+from app.pfo_agent import parse_with_llm
+from app.repair_classifier import SYSTEM_PROMPT, _user_prompt, classify_with_llm
 
 CLASSIFY_CASES = {
     "transmission slipping": "transmission",
@@ -34,34 +36,34 @@ EXTRACT_CASES = [
 
 
 def main() -> int:
-    s = cost_config.get_cost_settings()
+    s = get_settings()
     key = s.llm_api_key.strip()
-    print(f"env file: {cost_config.ENV_FILE} (exists: {cost_config.ENV_FILE.exists()})")
-    print(f"provider={s.llm_provider} model={s.llm_model} base={s.llm_base_url} key={'set' if key else 'MISSING'}")
-    if not s.llm_enabled:
-        print("LLM is disabled. Set LLM_PROVIDER=meta and LLM_API_KEY in cost_agent.env.")
+    provider = s.llm_provider.strip().lower()
+    model = s.llm_model.strip() or llm.DEFAULT_MODELS.get(provider, "")
+    print(f"provider={s.llm_provider} model={model} key={'set' if key else 'MISSING'}")
+    if not llm.llm_configured():
+        print("LLM is disabled. Set LLM_PROVIDER=meta and LLM_API_KEY in apps/api/.env.")
         return 1
+    base = llm._chat_url().removesuffix("/chat/completions")
+    print(f"base={base}")
 
     try:
-        r = httpx.get(f"{s.llm_base_url.rstrip('/')}/models",
+        r = httpx.get(f"{base}/models",
                       headers={"Authorization": f"Bearer {key}"}, timeout=s.llm_timeout_seconds)
         r.raise_for_status()
         ids = [m.get("id") for m in r.json().get("data", [])]
         print(f"models available to this key: {ids}")
-        if ids and s.llm_model not in ids:
-            print(f"WARNING: LLM_MODEL={s.llm_model} is not in that list.")
+        if ids and model not in ids:
+            print(f"WARNING: model {model} is not in that list.")
     except (httpx.HTTPError, ValueError) as exc:
         print(f"could not list models: {exc}")
 
-    print("\n-- one uncached call (shows token usage) --")
+    print("\n-- one uncached call --")
     try:
-        text, usage = chat(SYSTEM_PROMPT, _user_prompt("transmission slipping"))
-        print(f"reply: {text!r}\nusage: {usage}")
-    except httpx.HTTPStatusError as exc:
-        print(f"HTTP {exc.response.status_code}: {exc.response.text[:500]}")
-        return 1
-    except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
-        print(f"call failed: {exc!r}")
+        text = llm._complete(_user_prompt("transmission slipping"), system=SYSTEM_PROMPT, temperature=0)
+        print(f"reply: {text!r}")
+    except llm.LLMError as exc:
+        print(f"call failed: {exc}")
         return 1
 
     failures = 0
@@ -80,6 +82,14 @@ def main() -> int:
         ok = got == expected
         failures += not ok
         print(f"[{'ok' if ok else 'FAIL'}] {field}: {text!r} -> {got!r} (expected {expected!r})")
+
+    print("\n-- Explanation Agent (with USE_FIXTURES=false) --")
+    if s.use_fixtures:
+        print("skipped: USE_FIXTURES=true always uses the template explanation")
+    else:
+        e = llm.explain({"recommendation": "keep", "vehicle": "2012 Camry", "repair_cost": 4950,
+                         "krt": {"keepResult": 226.0, "tradeResult": 377.0, "refinanceResult": 226.0}})
+        print(f"summary: {e.summary}\ndetails: {e.details}")
 
     print(f"\n{failures} failure(s)")
     return 1 if failures else 0

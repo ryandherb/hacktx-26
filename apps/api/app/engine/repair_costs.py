@@ -2,7 +2,7 @@
 
 import re
 
-from ..models.cost_schemas import ManualQuote, RepairEstimate
+from ..models.schemas import ManualQuote, RepairEstimate
 from .cost_tables import (
     AGE_MULTIPLIERS,
     DEFAULT_MODEL,

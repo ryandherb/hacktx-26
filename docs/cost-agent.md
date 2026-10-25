@@ -1,5 +1,9 @@
 # Issue #2: Cost Agent Backend
 
+> **Integrated.** This feature now lives in the main backend: code under `apps/api/app/`, tests in
+> `apps/api/tests/`, types in `apps/web/lib/api.ts`, LLM settings in `apps/api/.env` (shared client:
+> `app/clients/llm.py`). Folder layouts, standalone servers, and "unpack" steps below are historical.
+
 Implements [GitHub issue #2](https://github.com/ryandherb/hacktx-26/issues/2). It decides
 whether a repair is quotable and estimates its cost at the high end, or accepts a manual shop
 quote. It also estimates the car's value and runs the PFO (Personal Finance Onboarding)

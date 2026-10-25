@@ -6,10 +6,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from issue_1_pre_quote_survey.pre_quote_api import app
-from issue_1_pre_quote_survey.app.models.pre_quote_schemas import PreQuoteInput
-from issue_1_pre_quote_survey.app.seeds import pre_quote_profiles as loader
-from issue_1_pre_quote_survey.app.pre_quote_routes import router
+from app.main import app
+from app.models.schemas import PreQuoteInput
+from app.seeds import pre_quote_profiles as loader
+from app.pre_quote_routes import router
 
 client = TestClient(app)
 ENDPOINT = "/pre-quote-survey"
@@ -73,7 +73,7 @@ def test_incomplete_profile_can_be_completed_without_other_profile_fields(monkey
 
 
 def test_invalid_stored_fields_prompt_instead_of_crashing(monkeypatch):
-    monkeypatch.setattr("issue_1_pre_quote_survey.app.seeds.pre_quote_profiles.load_profile_records", lambda: [
+    monkeypatch.setattr("app.seeds.pre_quote_profiles.load_profile_records", lambda: [
         {"id": "partial", "vehicle_model": 123, "vehicle_year": 0, "open_issue": "", "zip_code": None}
     ])
     assert survey({"profile_id": "partial"})["missing_fields"] == list(COMPLETE)
