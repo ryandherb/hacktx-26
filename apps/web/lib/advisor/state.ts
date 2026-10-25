@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { BankSnapshot, CostQuoteResult, ManualQuote, OptionsResult, PreQuoteSurveyResult } from "./service";
+import type { Analysis } from "@/lib/api";
+import type { BankSnapshot, CostQuoteResult, ManualQuote, PreQuoteSurveyResult } from "./service";
 import { EMPTY_SITUATION, type SituationAnswers } from "./situation";
 
 // Under the nextmove:v1:assessment prefix so clearAssessment() in lib/demo/session.ts wipes it.
@@ -31,13 +32,15 @@ export type AdvisorState = {
   bank: BankSnapshot | null;
   bankSkipped: boolean;
   bankModal: boolean;
-  // Results for step 3, and whether the full-width options page is slid into view.
-  options: OptionsResult | null;
+  // /analyze result for step 3, and which full-width page is slid into view
+  // (optionsPage: the "Your options" overview; planPage: the plan for the recommended option).
+  options: Analysis | null;
   optionsMocked: boolean;
   optionsPage: boolean;
+  planPage: boolean;
 };
 
-const INITIAL: AdvisorState = { view: "closed", step: "intro", problem: "", survey: null, surveyMocked: false, estimateFileName: null, situation: EMPTY_SITUATION, situationCard: 0, reportedIssue: null, quote: null, quoteMocked: false, manualQuote: null, bank: null, bankSkipped: false, bankModal: false, options: null, optionsMocked: false, optionsPage: false };
+const INITIAL: AdvisorState = { view: "closed", step: "intro", problem: "", survey: null, surveyMocked: false, estimateFileName: null, situation: EMPTY_SITUATION, situationCard: 0, reportedIssue: null, quote: null, quoteMocked: false, manualQuote: null, bank: null, bankSkipped: false, bankModal: false, options: null, optionsMocked: false, optionsPage: false, planPage: false };
 
 export function useAdvisorState() {
   const [state, setState] = useState<AdvisorState>(INITIAL);
@@ -48,7 +51,9 @@ export function useAdvisorState() {
       if (raw) {
         const saved = JSON.parse(raw) as Partial<AdvisorState>;
         const step = saved.step && ["problem", "estimate", "situation", "options"].includes(saved.step) ? saved.step : "intro";
-        setState({ ...INITIAL, ...saved, step, situation: { ...EMPTY_SITUATION, ...saved.situation } });
+        // Results saved by an older build had a different shape; drop them.
+        const options = saved.options && "result" in saved.options ? saved.options : null;
+        setState({ ...INITIAL, ...saved, step, options, ...(options ? {} : { optionsPage: false, planPage: false }), situation: { ...EMPTY_SITUATION, ...saved.situation } });
       }
     } catch {}
   }, []);

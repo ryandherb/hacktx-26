@@ -2,7 +2,11 @@
 // Real endpoint: Sheikh's POST /pre-quote-survey (issue #1). Types copied from
 // issue_1_pre_quote_survey/pre_quote_contract.ts on origin/sheikh; keep in sync with it.
 // Until that router is mounted in apps/api, calls fall back to a clearly labeled local mock.
+import type { Analysis } from "@/lib/api";
 import { BANK_FIXTURES, type BankAccount } from "@/lib/demo/bank";
+import { RECORDED_ANALYSES } from "@/lib/demo/analysis";
+import { toPfoFactors } from "./pfo";
+import type { SituationAnswers } from "./situation";
 
 export type PreQuoteInput = {
   repair_type: string;
@@ -181,45 +185,43 @@ function mockQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: Ma
   };
 }
 
-// ---- Results (issues #3 scoring + #4 explanation) -------------------------------------
-// PROPOSED response shape; Ryan (#3) and Eni (#4) have not published contracts yet.
-// Everything below is an ILLUSTRATIVE MOCK, not real financial math.
+// ---- Results (Ryan's KRT scoring + Eni's explanation): POST /analyze -------------------
+// Sends the customer's answers and the repair cost they confirmed. Without a backend (the
+// deployed demo), falls back to RECORDED real /analyze responses in lib/demo/analysis.ts.
 
-export type OptionId = "keep_repair" | "trade_in" | "private_sale";
+const ANALYZE_API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export const OPTION_LABELS: Record<OptionId, [string, string]> = {
-  keep_repair: ["Keep & Repair", "Fix it and keep driving"],
-  trade_in: ["Trade In & Upgrade", "Put this car toward a newer Toyota"],
-  private_sale: ["Private Sale & Refinance", "Sell it yourself and finance a replacement"],
-};
+export async function getAnalysis(
+  profileId: string,
+  situation: SituationAnswers,
+  quote: CostQuoteResult | null,
+  manualQuote: ManualQuote | null,
+): Promise<Served<Analysis>> {
+  const started = Date.now();
+  const pace = async () => { // lets the "crunching numbers" screen read naturally
+    const wait = 2600 - (Date.now() - started);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  };
+  const repair = manualQuote
+    ? { repair_cost_low: manualQuote.amount, repair_cost_high: manualQuote.amount }
+    : quote?.repair ? { repair_cost_low: quote.repair.repair_cost_low, repair_cost_high: quote.repair.repair_cost_high } : {};
 
-export type OptionsResult = {
-  scores: Record<OptionId, number>; // percentages, sum to 100
-  explanation: string;
-  recommended_vehicle: { name: string; kind: string; price: number; monthly_estimate: number } | null;
-  what_would_change: string[];
-};
-
-const MOCK_RESULTS: Record<string, OptionsResult> = {
-  maria: {
-    scores: { keep_repair: 24, trade_in: 61, private_sale: 15 },
-    explanation:
-      "A transmission repair on a 148,000-mile Camry could cost close to what the car is worth. With a confirmed new job, a healthy down payment, and strong credit, trading in for a newer Toyota keeps your monthly costs predictable without draining savings.",
-    recommended_vehicle: { name: "2023 Toyota Camry LE (Certified Used)", kind: "Certified used", price: 24500, monthly_estimate: 375 },
-    what_would_change: ["If the job offer fell through, repairing becomes the safer choice.", "A repair quote under $2,000 would favor keeping the car."],
-  },
-  dev: {
-    scores: { keep_repair: 68, trade_in: 12, private_sale: 20 },
-    explanation:
-      "An A/C repair is a contained cost, and an unpaid internship means a new car payment would stretch your budget during the months you'll have the least income. Fixing the Corolla keeps you on the road while you graduate, and you can revisit replacing it once your next job starts.",
-    recommended_vehicle: { name: "2021 Toyota Corolla LE (Used)", kind: "Used, for later", price: 17900, monthly_estimate: 310 },
-    what_would_change: ["A confirmed full-time job offer would make trading in more realistic.", "If the repair turns out to include the compressor and condenser, private sale gains ground."],
-  },
-};
-
-export async function getOptions(profileId: string): Promise<Served<OptionsResult>> {
-  await new Promise((r) => setTimeout(r, 2600)); // lets the "crunching numbers" screen read naturally
-  return { mocked: true, data: MOCK_RESULTS[profileId] ?? MOCK_RESULTS.dev };
+  if (backendReachable()) {
+    try {
+      const res = await fetch(`${ANALYZE_API}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile_id: profileId, horizon_months: 36, pfo: toPfoFactors(situation), ...repair }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = (await res.json()) as Analysis;
+      await pace();
+      return { mocked: false, data };
+    } catch {}
+  }
+  await pace();
+  return { mocked: true, data: RECORDED_ANALYSES[profileId] ?? RECORDED_ANALYSES.dev };
 }
 
 // ---- Bank connection (Capital One Nessie) ---------------------------------------------

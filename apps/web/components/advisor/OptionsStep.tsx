@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getOptions, OPTION_LABELS, type OptionId, type OptionsResult } from "@/lib/advisor/service";
+import type { Analysis } from "@/lib/api";
+import { getAnalysis, type CostQuoteResult, type ManualQuote } from "@/lib/advisor/service";
+import { OPTION_TITLES } from "@/lib/advisor/results";
+import type { SituationAnswers } from "@/lib/advisor/situation";
 import { ring } from "./AdvisorPanel";
 import { StepLayout } from "./controls";
 import StepFooter from "./StepFooter";
 
 const STAGES = ["Estimating your repair", "Checking your finances", "Scoring your options", "Writing your explanation"];
 
-type Props = { profileId: string; onBack: () => void; onStartOver: () => void; onResult: (r: OptionsResult, mocked: boolean) => void; onView: () => void };
+type Props = {
+  profileId: string; situation: SituationAnswers; quote: CostQuoteResult | null; manualQuote: ManualQuote | null;
+  onBack: () => void; onStartOver: () => void; onResult: (r: Analysis, mocked: boolean) => void; onView: () => void;
+};
 
 // Results are re-requested every time this step mounts, so edited answers never show a stale result.
-export default function OptionsStep({ profileId, onBack, onStartOver, onResult, onView }: Props) {
-  const [result, setResult] = useState<OptionsResult | null>(null);
+export default function OptionsStep({ profileId, situation, quote, manualQuote, onBack, onStartOver, onResult, onView }: Props) {
+  const [result, setResult] = useState<Analysis | null>(null);
   const [mocked, setMocked] = useState(false);
   const [stage, setStage] = useState(0);
   const onResultRef = useRef(onResult);
@@ -21,8 +27,11 @@ export default function OptionsStep({ profileId, onBack, onStartOver, onResult, 
   useEffect(() => {
     let live = true;
     const timer = setInterval(() => setStage((s) => Math.min(s + 1, STAGES.length - 1)), 650);
-    getOptions(profileId).then((r) => { if (live) { setResult(r.data); setMocked(r.mocked); onResultRef.current(r.data, r.mocked); } });
+    getAnalysis(profileId, situation, quote, manualQuote)
+      .then((r) => { if (live) { setResult(r.data); setMocked(r.mocked); onResultRef.current(r.data, r.mocked); } });
     return () => { live = false; clearInterval(timer); };
+    // Runs once per visit to this step; the answers can't change while it's showing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId]);
 
   if (!result) {
@@ -45,8 +54,6 @@ export default function OptionsStep({ profileId, onBack, onStartOver, onResult, 
     );
   }
 
-  const top = (Object.keys(result.scores) as OptionId[]).sort((x, y) => result.scores[y] - result.scores[x])[0];
-
   return (
     <StepLayout footer={
       <StepFooter step={3} onBack={onBack}
@@ -56,13 +63,13 @@ export default function OptionsStep({ profileId, onBack, onStartOver, onResult, 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/advisor/guide-placeholder.png" alt="" className="w-[clamp(80px,14vh,112px)] object-contain mix-blend-multiply" />
         <h2 id="advisor-title" tabIndex={-1} className="mt-4 text-[clamp(26px,2.6vw,34px)] font-extrabold leading-tight tracking-tight outline-none">Your options are ready</h2>
-        <p className="mt-2 max-w-sm text-[16px] text-neutral-600">We compared keeping and repairing, trading in, and selling privately.</p>
-        <p className="mt-3 text-[15px]"><span className="text-neutral-500">Best fit:</span> <span className="font-bold">{OPTION_LABELS[top][0]}</span></p>
+        <p className="mt-2 max-w-sm text-[16px] text-neutral-600">We compared keeping and repairing, trading in, and refinancing.</p>
+        <p className="mt-3 text-[15px]"><span className="text-neutral-500">Best fit:</span> <span className="font-bold">{OPTION_TITLES[result.recommendation]}</span></p>
         <button onClick={onView}
           className={`mt-6 inline-flex items-center gap-3 rounded-full bg-[#EB0A1E] px-10 py-4 xl:px-14 text-xl font-bold text-white shadow-[0_10px_28px_rgba(235,10,30,0.3)] hover:bg-[#c8091a] ${ring}`}>
           View your options <span aria-hidden>→</span>
         </button>
-        {mocked && <p className="mt-3 text-[11px] text-neutral-500">Demo results: scoring isn&rsquo;t connected yet.</p>}
+        {mocked && <p className="mt-3 text-[11px] text-neutral-500">Demo data: recorded results, backend not connected.</p>}
       </div>
     </StepLayout>
   );
