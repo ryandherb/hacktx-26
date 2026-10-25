@@ -29,7 +29,7 @@ export default function OptionsStep({ profileId, onBack, onStartOver, onResult, 
     return (
       <StepLayout footer={<StepFooter step={3} />}>
       <div aria-live="polite">
-        <h2 id="advisor-title" tabIndex={-1} className="text-[30px] font-extrabold tracking-tight outline-none">Crunching the numbers…</h2>
+        <h2 id="advisor-title" tabIndex={-1} className="text-[clamp(24px,2.2vw,30px)] font-extrabold tracking-tight outline-none">Crunching the numbers…</h2>
         <ul className="mt-8 space-y-4">
           {STAGES.map((s, i) => (
             <li key={s} className={`flex items-center gap-4 text-lg ${i <= stage ? "text-black" : "text-neutral-400"}`}>
@@ -50,16 +50,16 @@ export default function OptionsStep({ profileId, onBack, onStartOver, onResult, 
   return (
     <StepLayout footer={
       <StepFooter step={3} onBack={onBack}
-        left={<button onClick={onStartOver} className={`font-bold text-black underline-offset-4 hover:underline ${ring}`}>Start over</button>} />
+        left={<button onClick={onStartOver} className={`min-h-11 font-bold text-black underline-offset-4 hover:underline ${ring}`}>Start over</button>} />
     }>
       <div className="flex h-full flex-col items-center justify-center text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/advisor/guide-placeholder.png" alt="" className="w-28 mix-blend-multiply" />
-        <h2 id="advisor-title" tabIndex={-1} className="mt-4 text-[34px] font-extrabold leading-tight tracking-tight outline-none">Your options are ready</h2>
+        <img src="/advisor/guide-placeholder.png" alt="" className="w-[clamp(80px,14vh,112px)] object-contain mix-blend-multiply" />
+        <h2 id="advisor-title" tabIndex={-1} className="mt-4 text-[clamp(26px,2.6vw,34px)] font-extrabold leading-tight tracking-tight outline-none">Your options are ready</h2>
         <p className="mt-2 max-w-sm text-[16px] text-neutral-600">We compared keeping and repairing, trading in, and selling privately.</p>
         <p className="mt-3 text-[15px]"><span className="text-neutral-500">Best fit:</span> <span className="font-bold">{OPTION_LABELS[top][0]}</span></p>
         <button onClick={onView}
-          className={`mt-6 inline-flex items-center gap-3 rounded-full bg-[#EB0A1E] px-14 py-4 text-xl font-bold text-white shadow-[0_10px_28px_rgba(235,10,30,0.3)] hover:bg-[#c8091a] ${ring}`}>
+          className={`mt-6 inline-flex items-center gap-3 rounded-full bg-[#EB0A1E] px-10 py-4 xl:px-14 text-xl font-bold text-white shadow-[0_10px_28px_rgba(235,10,30,0.3)] hover:bg-[#c8091a] ${ring}`}>
           View your options <span aria-hidden>→</span>
         </button>
         {mocked && <p className="mt-3 text-[11px] text-neutral-500">Demo results: scoring isn&rsquo;t connected yet.</p>}

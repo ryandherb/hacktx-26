@@ -73,12 +73,12 @@ export default function Dashboard() {
 
   return (
     <div className="bg-white text-black">
-      {/* First screen: header + dashboard sized to exactly one viewport; the footer sits below it. */}
-      <div className="flex h-screen min-h-[640px] flex-col">
+      {/* First screen: header + dashboard fill at least one viewport and grow (page scrolls) when the screen is short; the footer sits below it. */}
+      <div className="flex min-h-screen flex-col">
       <header className="border-b border-neutral-200">
         <div className="mx-auto flex h-[72px] max-w-[1440px] items-center px-6 md:px-14">
           <ToyotaLogo />
-          <nav aria-label="Main" className="ml-auto hidden items-center gap-12 text-[17px] font-semibold text-neutral-700 md:flex lg:ml-0 lg:flex-1 lg:justify-center">
+          <nav aria-label="Main" className="ml-auto hidden items-center gap-8 text-[17px] font-semibold text-neutral-700 md:flex lg:ml-0 lg:flex-1 lg:justify-center lg:gap-12">
             {["Vehicles", "Shop", "Support & Service"].map((n) => (
               <span key={n} className="flex items-center gap-1.5">{n} <Chevron /></span>
             ))}
@@ -92,36 +92,38 @@ export default function Dashboard() {
 
       <div className="border-b border-neutral-200">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-10 px-6 md:px-14">
-          <nav aria-label="Owner" className="flex gap-10 text-[15px]">
+          <nav aria-label="Owner" className="flex w-full gap-6 overflow-x-auto whitespace-nowrap text-[15px] md:w-auto md:gap-10">
             <span aria-current="page" className="border-b-[3px] border-[#EB0A1E] py-3 font-bold">My Vehicle</span>
             <button onClick={openAdvisor} className={`border-b-[3px] border-transparent py-3 text-neutral-600 hover:text-black ${ring}`}>Lifecycle Advisor</button>
             <span className="border-b-[3px] border-transparent py-3 text-neutral-600">Service &amp; Maintenance</span>
           </nav>
-          <div className="ml-auto flex items-center gap-3 py-2">
+          <div className="flex w-full items-center justify-between gap-3 py-2 md:ml-auto md:w-auto md:justify-start">
             <label className="relative">
               <span className="sr-only">Demo profile</span>
               <select value={profile.id} onChange={(e) => choose(e.target.value)}
-                className={`appearance-none rounded-md border border-neutral-300 bg-white py-2 pl-4 pr-10 text-[15px] ${ring}`}>
+                className={`appearance-none rounded-md max-md:min-h-11 border border-neutral-300 bg-white py-2 pl-4 pr-10 text-base md:text-[15px] ${ring}`}>
                 {profiles.map((p) => <option key={p.id} value={p.id}>Demo profile: {displayFor(p).firstName}</option>)}
               </select>
               <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"><Chevron /></span>
             </label>
-            <button onClick={restart} className={`rounded-md px-3 py-2.5 text-sm text-neutral-600 underline-offset-2 hover:underline ${ring}`}>Restart scenario</button>
+            <button onClick={restart} className={`whitespace-nowrap rounded-md px-3 max-md:min-h-11 py-2.5 text-sm text-neutral-600 underline-offset-2 hover:underline ${ring}`}>Restart scenario</button>
           </div>
         </div>
       </div>
 
       <main className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-6 pb-6 pt-5 md:px-14">
         {/* Two-slide track: the dashboard (car + advisor panel) and the full-width options page.
-            "View your options" slides the dashboard out to the left; header and footer stay put. */}
-        <div className="relative -mx-6 min-h-0 flex-1 overflow-hidden md:-mx-14">
-          <div className="flex h-full w-[200%] transition-transform duration-700 ease-[cubic-bezier(0.22,0.8,0.2,1)]"
-            style={{ transform: optionsPage ? "translateX(-50%)" : "translateX(0)" }}>
-          <div className="flex h-full min-h-0 w-1/2 flex-col px-6 md:px-14" inert={optionsPage}>
+            "View your options" slides the dashboard out to the left; header and footer stay put.
+            At rest the track has no transform, so the phone advisor sheet (position: fixed) stays relative to the screen. */}
+        <div className="relative -mx-6 flex flex-1 overflow-hidden md:-mx-14">
+          <div className="flex w-[200%] shrink-0 transition-transform duration-700 max-md:transition-none ease-[cubic-bezier(0.22,0.8,0.2,1)]"
+            style={{ transform: optionsPage ? "translateX(-50%)" : "none" }}>
+          {/* On phones the hidden slide collapses so its height never stretches the visible one (no slide animation there). */}
+          <div className={`flex w-1/2 flex-col px-6 md:px-14 ${optionsPage ? "max-md:h-0" : ""}`} inert={optionsPage}>
         {/* Opening the advisor slides the car into the left column and reveals the panel on the right. */}
         <div className="grid min-h-0 flex-1 transition-[grid-template-columns] duration-500 ease-out"
           style={{ gridTemplateColumns: split ? "minmax(0,1.08fr) 1px minmax(0,1fr)" : "minmax(0,1fr) 0px minmax(0,0fr)" }}>
-          <section aria-label="Your vehicle" className={`relative flex min-h-0 flex-col ${split ? "pr-12 text-left" : "text-center"}`}>
+          <section aria-label="Your vehicle" className={`relative flex min-h-0 flex-col ${split ? "pr-8 text-left xl:pr-12" : "text-center"}`}>
             <div className={split ? "mb-4" : "text-left lg:absolute lg:left-0 lg:top-0"}>
               <h1 className="text-[28px] font-bold tracking-tight">Welcome back, {d.firstName}.</h1>
               <p role="status" className="max-w-[260px] text-xs text-neutral-500">
@@ -129,17 +131,17 @@ export default function Dashboard() {
               </p>
             </div>
             <p className="text-sm font-semibold uppercase tracking-[0.12em] text-neutral-500">Your Toyota</p>
-            <h2 className={`font-extrabold leading-tight tracking-tight ${split ? "text-[44px]" : "text-[44px] md:text-[52px]"}`}>{title}</h2>
+            <h2 className={`font-extrabold leading-tight tracking-tight ${split ? "text-[clamp(32px,3.2vw,44px)]" : "text-[clamp(36px,3.6vw,52px)]"}`}>{title}</h2>
             {(d.trim || d.color) && (
               <p className="text-lg text-neutral-600">{[d.trim, d.color].filter(Boolean).join("  |  ")}</p>
             )}
 
-            <button onClick={() => setDrawer(true)} className={`relative mt-2 block min-h-[140px] w-full flex-1 rounded-xl ${ring}`} aria-label={`Open vehicle details for ${label}`}>
+            <button onClick={() => setDrawer(true)} className={`relative mt-2 block min-h-[max(160px,30vh)] w-full flex-1 rounded-xl ${ring}`} aria-label={`Open vehicle details for ${label}`}>
               <CarImage src={d.imageSrc} label={label} placeholder={d.imagePlaceholder} />
             </button>
 
             <div className="mt-1 flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
-              <button onClick={() => setIssuesOpen(true)} className={`inline-flex items-center gap-2 text-sm underline underline-offset-2 ${ring}`}>
+              <button onClick={() => setIssuesOpen(true)} className={`inline-flex items-center gap-2 text-sm underline max-md:min-h-11 underline-offset-2 ${ring}`}>
                 <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" aria-hidden><path d="M10 2.5 18 17H2L10 2.5Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /><path d="M10 8v4M10 14.3v.1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
                 Current issues
                 <span className={`rounded-full px-2 py-0.5 text-xs font-bold no-underline ${advisor.state.reportedIssue ? "bg-[#EB0A1E] text-white" : "bg-neutral-200 text-neutral-600"}`}>
@@ -150,9 +152,9 @@ export default function Dashboard() {
 
             <dl className={`mx-auto mt-3 grid w-full max-w-3xl grid-cols-3 divide-x divide-neutral-300 text-center ${split ? "border-b border-neutral-200 pb-4" : ""}`}>
               {([["Mileage", `${profile.mileage.toLocaleString()} mi`], ["Ownership", d.ownership], ["Location", d.location]] as const).map(([k, v]) => (
-                <div key={k} className="px-4">
-                  <dt className="text-[15px] text-neutral-600">{k}</dt>
-                  <dd className="text-xl font-bold">{v}</dd>
+                <div key={k} className="px-2 sm:px-4">
+                  <dt className="text-sm text-neutral-600 sm:text-[15px]">{k}</dt>
+                  <dd className="text-base font-bold sm:text-xl">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -160,13 +162,14 @@ export default function Dashboard() {
             {/* Hidden while the advisor panel is open, so the left side stays uncluttered. */}
             {!split && (
               <>
-                <h2 className="mt-5 text-[32px] font-extrabold leading-tight tracking-tight">Your car. Your next move.</h2>
+                <h2 className="mt-5 text-[clamp(24px,2.3vw,32px)] font-extrabold leading-tight tracking-tight">Your car. Your next move.</h2>
                 <p className="text-[17px] text-neutral-600">Explore repair and replacement options that fit your life.</p>
+                {/* mt-16 leaves room for the guide peeking over the red button (stacked first on phones so it never covers the other button). */}
                 <div className="mt-16 flex flex-wrap justify-center gap-6">
-                  <button onClick={() => setDrawer(true)} className={`rounded-full border-2 border-black px-12 py-3.5 text-lg font-bold hover:bg-neutral-50 ${ring}`}>
+                  <button onClick={() => setDrawer(true)} className={`rounded-full border-2 border-black px-8 py-3.5 text-lg font-bold hover:bg-neutral-50 max-sm:w-full sm:px-12 ${ring}`}>
                     View Vehicle Details
                   </button>
-                  <button onClick={openAdvisor} className={`relative inline-flex items-center gap-3 rounded-full bg-[#EB0A1E] px-12 py-3.5 text-lg font-bold text-white hover:bg-[#c8091a] ${ring}`}>
+                  <button onClick={openAdvisor} className={`relative inline-flex items-center justify-center gap-3 rounded-full bg-[#EB0A1E] px-8 py-3.5 text-lg max-sm:order-first max-sm:w-full sm:px-12 font-bold text-white hover:bg-[#c8091a] ${ring}`}>
                     {/* AI guide peeking over the button; placeholder art cropped from the design mockup. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/advisor/guide-peek.png" alt="" aria-hidden draggable={false}
@@ -181,8 +184,9 @@ export default function Dashboard() {
           <div aria-hidden className="my-2 bg-neutral-200" />
 
           <div className="min-h-0 overflow-hidden">
+            {/* On phones the advisor opens as a full-screen sheet instead of the side-by-side split. */}
             {split && (
-              <div className="h-full min-w-[480px] pl-12">
+              <div className={`h-full max-h-[max(440px,calc(100dvh_-_176px))] md:pl-8 xl:min-w-[480px] xl:pl-12 max-md:fixed max-md:inset-0 max-md:z-40 max-md:max-h-none max-md:bg-white max-md:px-5 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:pt-3 ${optionsPage ? "max-md:hidden" : ""}`}>
                 <AdvisorPanel step={advisorStep} onMinimize={minimizeAdvisor} onClose={closeAdvisor}>
                   {advisor.state.step === "intro" && (
                     <AdvisorIntro firstName={d.firstName} inProgress={!!advisor.state.reportedIssue}
@@ -203,7 +207,7 @@ export default function Dashboard() {
           </div>
         </div>
           </div>
-          <div className="h-full w-1/2 overflow-y-auto px-6 md:px-14" inert={!optionsPage}>
+          <div className={`w-1/2 overflow-y-auto px-6 md:px-14 ${optionsPage ? "" : "max-md:h-0"}`} inert={!optionsPage}>
             <OptionsPage open={optionsPage} vehicleLabel={label} result={advisor.state.options} mocked={advisor.state.optionsMocked}
               onBack={() => advisor.update({ optionsPage: false })} />
           </div>

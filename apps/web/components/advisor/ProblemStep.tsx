@@ -66,7 +66,7 @@ export default function ProblemStep({ profile, state, update }: Props) {
 
   return (
     <StepLayout footer={<StepFooter step={1} onBack={() => update({ step: "intro" })} onContinue={submit} disabled={!text.trim()} busy={sending} />}>
-      <h2 id="advisor-title" tabIndex={-1} className="text-[34px] font-extrabold leading-tight tracking-tight outline-none">What&rsquo;s happening with your car?</h2>
+      <h2 id="advisor-title" tabIndex={-1} className="text-[clamp(26px,2.6vw,34px)] font-extrabold leading-tight tracking-tight outline-none">What&rsquo;s happening with your car?</h2>
       <p className="mt-1 text-lg text-neutral-600">Describe the issue, or share a repair estimate if you have one.</p>
 
       <div className="relative mt-5">
@@ -75,7 +75,7 @@ export default function ProblemStep({ profile, state, update }: Props) {
           placeholder="For example: My car shakes when I accelerate…"
           className={`w-full resize-none rounded-xl border border-neutral-300 px-5 py-4 pr-14 text-lg placeholder:text-neutral-500 outline-none focus:border-neutral-800 focus:ring-1 focus:ring-neutral-800`} />
         <button onClick={() => fileInput.current?.click()} aria-label="Attach a repair estimate" title="Attach a repair estimate"
-          className={`absolute bottom-4 right-4 rounded-full p-1.5 text-neutral-600 hover:bg-neutral-100 ${ring}`}>
+          className={`absolute bottom-2.5 right-2.5 rounded-full p-3 text-neutral-600 hover:bg-neutral-100 ${ring}`}>
           <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden><path d="M20 11.5l-7.8 7.8a5 5 0 01-7.1-7.1l8.5-8.5a3.3 3.3 0 014.7 4.7l-8.5 8.5a1.7 1.7 0 01-2.4-2.4l7.8-7.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
         </button>
       </div>
@@ -90,7 +90,7 @@ export default function ProblemStep({ profile, state, update }: Props) {
         <div className="text-right">
           <p className="mr-[150px] text-sm text-neutral-600">Demo</p>
           <button onClick={insertDemo} disabled={!!preset && text === preset}
-            className={`inline-flex items-center gap-2 text-lg underline underline-offset-4 hover:text-[#EB0A1E] disabled:opacity-40 ${ring}`}>
+            className={`inline-flex items-center gap-2 text-lg underline max-md:min-h-11 underline-offset-4 hover:text-[#EB0A1E] disabled:opacity-40 ${ring}`}>
             <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden><rect x="4" y="2.5" width="12" height="15" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.4" /></svg>
             {text.trim() && text !== preset ? "Replace with demo answer" : "Insert demo answer"}
           </button>
