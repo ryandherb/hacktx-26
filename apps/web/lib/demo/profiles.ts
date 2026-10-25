@@ -18,7 +18,7 @@ export type ProfileDisplay = {
 };
 
 export const PROFILE_DISPLAY: Record<string, ProfileDisplay> = {
-  maria: { firstName: "Maria", trim: "LE", color: "Barcelona Red Metallic", ownership: "Owned", location: "Austin, TX", imageSrc: "/cars/placeholder.png", imagePlaceholder: true },
+  maria: { firstName: "Maria", trim: "SE", color: "Cypress Pearl", ownership: "Owned", location: "Austin, TX", imageSrc: "/cars/camry-2012.png", imagePlaceholder: false },
   dev: { firstName: "Dev", trim: "S", color: "Magnetic Gray Metallic", ownership: "Owned", location: "Austin, TX", imageSrc: "/cars/corolla-2010.png", imagePlaceholder: false },
 };
 
