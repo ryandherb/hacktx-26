@@ -21,6 +21,7 @@ class Profile(BaseModel):
     monthly_payment: float = 0.0
     service_history: list[ServiceRecord] = Field(default_factory=list)
     open_issue: str | None = None  # e.g. "transmission slipping"
+    insurance_premium: float | None = None  # monthly; manual/PFO override of Nessie
 
 
 class AffordabilityResult(BaseModel):
@@ -32,10 +33,14 @@ class AffordabilityResult(BaseModel):
     can_afford_payment: bool
     max_comfortable_payment: float
 
+class MaintenanceTask(BaseModel):
+    cost: float
+    interval: int
 
 class MarketData(BaseModel):
     current_vehicle_value_low: float
     current_vehicle_value_high: float
+    scheduled_maintenance: list[MaintenanceTask]
     replacement_options: list[dict]  # name, price, kind (new/cpo/used)
     repair_quotes: list[dict]  # shop, estimate, source
 
@@ -52,12 +57,20 @@ class CurvePoint(BaseModel):
     keep_cost: float
     replace_cost: float
 
+class KRTResult(BaseModel):
+    keepResult: float
+    refinanceResult: float
+    tradeResult: float
+    repair_ratio: float
+    pr_runway: float
+    remaining_life: float
 
 class AnalysisResult(BaseModel):
     profile_id: str
     curve: list[CurvePoint]
     crossover_month: int | None
-    recommendation: str  # "keep" | "replace_now" | "replace_later"
+    result: KRTResult
+    reccomendation: str # "keep" | "trade" | "refinance"
     affordability: AffordabilityResult
     market: MarketData
     explanation: str
