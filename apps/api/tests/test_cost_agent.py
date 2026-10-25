@@ -113,6 +113,27 @@ def test_llm_low_confidence_symptoms_and_unlisted_ids_are_not_quotable(monkeypat
     assert (result.method, result.kind, result.quotable) == ("llm", kind, False)
 
 
+def test_llm_general_tier_prices_unlisted_specific_repair(monkeypatch):
+    fake_llm(monkeypatch, {"category": "general_moderate", "confidence": 0.9, "label": "  Front bumper   replacement "})
+    result = repair_classifier.classify_repair("front bumper is cracked")
+    assert (result.method, result.kind, result.category, result.label) == (
+        "llm", "repair", "general_moderate", "Front bumper replacement")
+    quote = post("/quote", {"quote_input": {**MARIA_INPUT, "repair_type": "front bumper is cracked"}, "mileage": 90000})
+    assert quote["repair"]["label"] == "Front bumper replacement"
+    assert (quote["repair"]["repair_cost_low"], quote["repair"]["repair_cost_high"]) == (440.0, 1430.0)
+
+
+def test_llm_low_confidence_general_tier_is_not_quotable(monkeypatch):
+    fake_llm(monkeypatch, {"category": "general_major", "confidence": 0.5, "label": "Something big"})
+    result = repair_classifier.classify_repair("front bumper")
+    assert (result.kind, result.quotable) == ("unknown", False)
+
+
+def test_keyword_fallback_never_picks_a_general_tier():
+    result = repair_classifier.classify_repair("front bumper is cracked")
+    assert (result.method, result.kind, result.quotable) == ("keyword", "unknown", False)
+
+
 @pytest.mark.parametrize("reply", [None, {"confidence": "high"}, {"category": "brakes", "confidence": 7}])
 def test_llm_failure_or_bad_shape_falls_back_to_keywords(monkeypatch, reply):
     fake_llm(monkeypatch, reply)

@@ -6,6 +6,7 @@ from ..models.schemas import ManualQuote, RepairEstimate
 from .cost_tables import (
     AGE_MULTIPLIERS,
     DEFAULT_MODEL,
+    GENERAL_TIERS,
     LABOR_MULTIPLIERS,
     MODELS,
     OLDEST_AGE_MULTIPLIER,
@@ -41,9 +42,11 @@ def age_multiplier(age_years: int) -> float:
 
 
 def estimate_from_table(
-    category: str, vehicle_model: str, vehicle_year: int, location: str, as_of_year: int
+    category: str, vehicle_model: str, vehicle_year: int, location: str, as_of_year: int,
+    label: str | None = None,
 ) -> RepairEstimate:
-    entry = REPAIR_CATEGORIES[category]
+    """Price a catalog repair or a general tier; `label` names a general-tier repair."""
+    entry = REPAIR_CATEGORIES.get(category) or GENERAL_TIERS[category]
     model = MODELS.get(model_key(vehicle_model), DEFAULT_MODEL)
     state = state_from_location(location)
     m_model = model["repair_multiplier"]
@@ -54,7 +57,7 @@ def estimate_from_table(
     return RepairEstimate(
         source="table",
         category=category,
-        label=entry["label"],
+        label=label or entry["label"],
         repair_cost_low=low,
         repair_cost_high=high,
         repair_cost_estimate=high,

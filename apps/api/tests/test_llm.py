@@ -255,7 +255,7 @@ def test_explain_uses_llm_reply(monkeypatch, rec):
     assert e.summary == f"{LLM_REPLIES[rec]['summary']} {llm.SHORT_DISCLAIMER}"
     assert e.details == f"{LLM_REPLIES[rec]['details']} {llm.DISCLAIMER}"
     assert len(calls) == 1  # one request for both versions
-    assert calls[0]["timeout"] == llm.EXPLAIN_TIMEOUT_SECONDS  # capped so /analyze stays fast
+    assert calls[0]["timeout"] == pytest.approx(llm.EXPLAIN_TIMEOUT_SECONDS, abs=0.5)  # capped so /analyze stays fast
     call = calls[0]
     assert call["url"] == "https://api.meta.ai/v1/chat/completions"
     assert call["headers"]["Authorization"] == "Bearer test-key"
@@ -371,6 +371,61 @@ def test_network_error_falls_back(monkeypatch):
     assert llm.explain(ctx("keep")) == template(ctx("keep"))
 
 
+def test_flaky_404_retries_then_uses_fallback_model(monkeypatch):
+    use_settings(monkeypatch, llm_model="muse-a", llm_fallback_models="muse-b")
+    models = []
+
+    def _post(url, headers=None, json=None, timeout=None):
+        models.append(json["model"])
+        status = 404 if json["model"] == "muse-a" else 200  # Muse's intermittent model_not_found
+        return httpx.Response(
+            status,
+            json={"choices": [{"message": {"role": "assistant", "content": "hi"}}]},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(llm.httpx, "post", _post)
+    assert llm._complete("hello") == "hi"
+    assert models == ["muse-a", "muse-a", "muse-b"]
+
+
+def test_auth_error_is_not_retried(monkeypatch):
+    use_settings(monkeypatch)
+    calls = []
+    monkeypatch.setattr(llm.httpx, "post", fake_post("x", calls, status=401))
+    with pytest.raises(llm.LLMError):
+        llm._complete("hello")
+    assert len(calls) == 1
+
+
+def test_timeout_skips_to_next_model(monkeypatch):
+    use_settings(monkeypatch, llm_model="muse-a", llm_fallback_models="muse-b")
+    models = []
+
+    def _post(url, headers=None, json=None, timeout=None):
+        models.append(json["model"])
+        raise httpx.ReadTimeout("slow")
+
+    monkeypatch.setattr(llm.httpx, "post", _post)
+    with pytest.raises(llm.LLMError):
+        llm._complete("hello")
+    assert models == ["muse-a", "muse-b"]
+
+
+@pytest.mark.parametrize(
+    "provider, model, fallbacks, expected",
+    [
+        ("muse", "muse-spark-1.3", "", ["muse-spark-1.3", "muse-spark-1.2"]),
+        ("muse", "muse-spark-1.2", "", ["muse-spark-1.2"]),
+        ("openai", "gpt-x", "", ["gpt-x"]),
+        ("openai", "gpt-x", " gpt-y, gpt-x ", ["gpt-x", "gpt-y"]),
+    ],
+)
+def test_model_order(monkeypatch, provider, model, fallbacks, expected):
+    use_settings(monkeypatch, llm_provider=provider, llm_fallback_models=fallbacks)
+    assert llm._models(model) == expected
+
+
 # --- _complete details ----------------------------------------------------------
 
 
@@ -414,3 +469,22 @@ def test_extract_without_provider_raises(monkeypatch):
     use_settings(monkeypatch, llm_provider="none")
     with pytest.raises(NotImplementedError):
         llm.extract("{}", "text")
+
+
+def test_explain_retries_stay_inside_time_budget(monkeypatch):
+    # Muse keeps failing transiently; each attempt "takes" 6s on a fake clock. Retries and the
+    # fallback model must stop once the explanation's 10s budget is spent, then use the template.
+    use_settings(monkeypatch)
+    clock = {"now": 0.0}
+    calls: list = []
+
+    def failing_post(url, headers=None, json=None, timeout=None):
+        calls.append(timeout)
+        clock["now"] += 6
+        return httpx.Response(503, json={}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(llm.time, "monotonic", lambda: clock["now"])
+    monkeypatch.setattr(llm.httpx, "post", failing_post)
+    assert llm.explain(ctx("keep")) == template(ctx("keep"))
+    assert len(calls) == 2  # 0s and 6s; a third attempt would start past the 10s budget
+    assert calls[0] == llm.EXPLAIN_TIMEOUT_SECONDS and calls[1] <= 4
