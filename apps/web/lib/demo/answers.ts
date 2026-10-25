@@ -4,6 +4,12 @@ import type { SituationAnswers } from "@/lib/advisor/situation";
 
 export type DemoTopic = "repair_description";
 
+// Sample shop quotes for "Use sample dealer estimate" when the Cost Agent says a quote is needed.
+export const DEMO_SHOP_QUOTES: Record<string, { amount: number; shop: string }> = {
+  maria: { amount: 1850, shop: "Central TX Auto Care" },
+  dev: { amount: 1450, shop: "South Austin Auto A/C" },
+};
+
 export const DEMO_ANSWERS: Record<string, Partial<Record<DemoTopic, string>>> = {
   maria: { repair_description: "Transmission slips when shifting from 2nd to 3rd, and the RPMs jump on the highway." },
   dev: { repair_description: "A/C blows warm air, and there's a grinding noise when it kicks on." },

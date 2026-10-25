@@ -1,14 +1,17 @@
 "use client";
 
+import type { CostQuoteResult } from "@/lib/advisor/service";
 import type { ReportedIssue } from "@/lib/advisor/state";
 import SideDrawer from "./SideDrawer";
 
 const ring = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#EB0A1E]";
 
-type Props = { open: boolean; onClose: () => void; label: string; issue: ReportedIssue | null; optionsReady: boolean; onOpenAdvisor: () => void };
+type Props = { open: boolean; onClose: () => void; label: string; issue: ReportedIssue | null; optionsReady: boolean; quote: CostQuoteResult | null; onOpenAdvisor: () => void };
 
 // Issues the owner reported in the Lifecycle Advisor (saved when step 1 is submitted).
-export default function IssuesDrawer({ open, onClose, label, issue, optionsReady, onOpenAdvisor }: Props) {
+const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
+
+export default function IssuesDrawer({ open, onClose, label, issue, optionsReady, quote, onOpenAdvisor }: Props) {
   const go = () => { onClose(); onOpenAdvisor(); };
   return (
     <SideDrawer open={open} onClose={onClose} title="Current issues" closeLabel="Close current issues">
@@ -25,6 +28,13 @@ export default function IssuesDrawer({ open, onClose, label, issue, optionsReady
           </div>
           <p className="mt-3 text-[17px] font-bold leading-snug">{issue.text}</p>
           {issue.estimateFileName && <p className="mt-2 text-sm text-neutral-600">Estimate attached: {issue.estimateFileName}</p>}
+          {quote && (
+            <p className="mt-3 text-sm">
+              {quote.repair
+                ? <><span className="text-neutral-600">{quote.repair.source === "manual" ? "Shop quote" : "Estimated repair"}: </span><span className="font-bold">{quote.repair.repair_cost_low === quote.repair.repair_cost_high ? money(quote.repair.repair_cost_estimate) : `${money(quote.repair.repair_cost_low)} – ${money(quote.repair.repair_cost_high)}`}</span></>
+                : <span className="font-bold text-amber-800">Inspection needed for a real quote</span>}
+            </p>
+          )}
           <p className="mt-3 text-sm text-neutral-600">Status: {optionsReady ? "Options ready in Lifecycle Advisor" : "Assessment in progress"}</p>
           <button onClick={go} className={`mt-5 w-full rounded-full bg-black px-6 py-3 font-bold text-white hover:bg-neutral-800 ${ring}`}>
             {optionsReady ? "See my options" : "Continue in Lifecycle Advisor"}

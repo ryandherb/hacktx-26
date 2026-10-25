@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AdvisorIntro from "@/components/advisor/AdvisorIntro";
 import AdvisorPanel from "@/components/advisor/AdvisorPanel";
 import BankConnectModal from "@/components/advisor/BankConnectModal";
+import EstimateStep from "@/components/advisor/EstimateStep";
 import MinimizedPill from "@/components/advisor/MinimizedPill";
 import OptionsStep from "@/components/advisor/OptionsStep";
 import ProblemStep from "@/components/advisor/ProblemStep";
@@ -65,7 +66,7 @@ export default function Dashboard() {
   const d = displayFor(profile);
   const title = `${profile.vehicle_year} ${profile.vehicle_model}`;
   const label = `${profile.vehicle_year} Toyota ${profile.vehicle_model}`;
-  const advisorStep = { intro: 0, problem: 1, situation: 2, options: 3 }[advisor.state.step];
+  const advisorStep = { intro: 0, problem: 1, estimate: 1, situation: 2, options: 3 }[advisor.state.step];
   const split = advisor.state.view === "open";
 
   return (
@@ -180,6 +181,7 @@ export default function Dashboard() {
                       onStart={() => advisor.update({ step: advisor.state.reportedIssue ? "situation" : "problem" })} />
                   )}
                   {advisor.state.step === "problem" && <ProblemStep profile={profile} state={advisor.state} update={advisor.update} />}
+                  {advisor.state.step === "estimate" && <EstimateStep profile={profile} state={advisor.state} update={advisor.update} />}
                   {advisor.state.step === "situation" && <SituationStep profileId={profile.id} state={advisor.state} update={advisor.update} />}
                   {advisor.state.step === "options" && (
                     <OptionsStep profileId={profile.id} onBack={() => advisor.update({ step: "situation" })}
@@ -197,7 +199,7 @@ export default function Dashboard() {
 
       <VehicleDrawer open={drawer} onClose={closeDrawer} profile={profile} display={d} label={label} />
       <IssuesDrawer open={issuesOpen} onClose={closeIssues} label={label} issue={advisor.state.reportedIssue}
-        optionsReady={advisor.state.step === "options"} onOpenAdvisor={openAdvisor} />
+        optionsReady={advisor.state.step === "options"} quote={advisor.state.quote} onOpenAdvisor={openAdvisor} />
       {advisor.state.bankModal && (
         <BankConnectModal profileId={profile.id} firstName={d.firstName}
           onClose={() => advisor.update({ bankModal: false })}

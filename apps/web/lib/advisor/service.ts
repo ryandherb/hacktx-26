@@ -1,8 +1,8 @@
-import { BANK_FIXTURES, type BankAccount } from "@/lib/demo/bank";
 // Single frontend boundary to the backend for the advisor flow.
 // Real endpoint: Sheikh's POST /pre-quote-survey (issue #1). Types copied from
 // issue_1_pre_quote_survey/pre_quote_contract.ts on origin/sheikh; keep in sync with it.
 // Until that router is mounted in apps/api, calls fall back to a clearly labeled local mock.
+import { BANK_FIXTURES, type BankAccount } from "@/lib/demo/bank";
 
 export type PreQuoteInput = {
   repair_type: string;
@@ -56,6 +56,114 @@ export async function submitProblem(profileId: string, text: string, vehicle: Ve
   return {
     mocked: true,
     data: { profile_id: profileId, answers: quote_input, missing_fields: [], questions: [], complete: true, quote_input },
+  };
+}
+
+// ---- Repair quote (issue #2 Cost Agent: POST /quote) -----------------------------------
+// Types mirror issue_2_cost_agent/web/lib/cost_api.ts on main; fold into lib/api.ts when the
+// team unpacks the Cost Agent. Falls back to a labeled mock if the service is unreachable.
+
+export type ManualQuote = { amount: number; shop?: string | null };
+
+export type RepairClassification = {
+  category: string | null;
+  label: string | null;
+  kind: "repair" | "symptom" | "multiple" | "unknown";
+  quotable: boolean;
+  confidence: number;
+  method: "llm" | "keyword";
+  reason: string;
+};
+
+export type RepairEstimate = {
+  source: "table" | "manual";
+  category: string | null;
+  label: string;
+  repair_cost_low: number;
+  repair_cost_high: number;
+  repair_cost_estimate: number;
+  region: string | null;
+  shop: string | null;
+};
+
+export type VehicleValue = {
+  vehicle_age_years: number;
+  mileage: number;
+  private_sale_low: number;
+  private_sale_high: number;
+  private_sale_estimate: number;
+  trade_in_low: number;
+  trade_in_high: number;
+  trade_in_estimate: number;
+};
+
+export type CostQuoteResult = {
+  profile_id: string | null;
+  quote_input: PreQuoteInput;
+  classification: RepairClassification;
+  needs_manual: boolean;
+  questions: { field: "manual_quote" | "mileage"; prompt: string; input_type: "number" }[];
+  repair: RepairEstimate | null;
+  vehicle: VehicleValue | null;
+  nearby_shops: { name: string; source: "fixture" }[];
+  complete: boolean;
+  disclaimer: string;
+};
+
+export async function getQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): Promise<Served<CostQuoteResult>> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch(`${SURVEY_API}/quote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: profileId, quote_input: quoteInput, manual_quote: manualQuote }),
+      signal: ctrl.signal,
+    });
+    if (res.ok) return { data: (await res.json()) as CostQuoteResult, mocked: false };
+    if (res.status !== 404) throw new Error(`Repair quote service error ${res.status}`);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("Repair quote service error")) throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+  return { mocked: true, data: mockQuote(profileId, quoteInput, manualQuote) };
+}
+
+// MOCK: copies of the real Cost Agent's output for the demo profiles (captured from POST /quote).
+const QUOTE_DISCLAIMER = "Estimates based on synthetic data, not financial advice. Get a real shop quote before deciding.";
+const MOCK_QUOTES: Record<string, Pick<CostQuoteResult, "classification" | "repair" | "vehicle" | "nearby_shops">> = {
+  maria: {
+    classification: { category: "transmission", label: "Transmission rebuild or replacement", kind: "repair", quotable: true, confidence: 0.9, method: "keyword", reason: "Matched to Transmission rebuild or replacement." },
+    repair: { source: "table", category: "transmission", label: "Transmission rebuild or replacement", repair_cost_low: 2750, repair_cost_high: 4950, repair_cost_estimate: 4950, region: "TX", shop: null },
+    vehicle: { vehicle_age_years: 14, mileage: 148000, private_sale_low: 4275, private_sale_high: 5225, private_sale_estimate: 4750, trade_in_low: 3420, trade_in_high: 4180, trade_in_estimate: 3800 },
+    nearby_shops: [{ name: "Austin Transmission Co.", source: "fixture" }, { name: "Central TX Auto Care", source: "fixture" }],
+  },
+  dev: {
+    classification: { category: "noise", label: "Unusual noise", kind: "symptom", quotable: false, confidence: 0.9, method: "keyword", reason: "This describes a symptom that could come from several different problems. A shop diagnosis will give you a real quote." },
+    repair: null,
+    vehicle: { vehicle_age_years: 16, mileage: 171000, private_sale_low: 2565, private_sale_high: 3135, private_sale_estimate: 2850, trade_in_low: 2025, trade_in_high: 2475, trade_in_estimate: 2250 },
+    nearby_shops: [{ name: "South Austin Auto A/C", source: "fixture" }, { name: "Quick Fix Garage", source: "fixture" }],
+  },
+};
+
+function mockQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): CostQuoteResult {
+  const base = MOCK_QUOTES[profileId] ?? MOCK_QUOTES.dev;
+  const c = base.classification;
+  const repair: RepairEstimate | null = manualQuote
+    ? { source: "manual", category: c.category, label: c.label ?? "Shop quote", repair_cost_low: manualQuote.amount, repair_cost_high: manualQuote.amount, repair_cost_estimate: manualQuote.amount, region: null, shop: manualQuote.shop ?? null }
+    : base.repair;
+  return {
+    profile_id: profileId,
+    quote_input: quoteInput,
+    classification: c,
+    needs_manual: !repair,
+    questions: repair ? [] : [{ field: "manual_quote", prompt: `${c.reason} If you already have a quote, enter the total amount.`, input_type: "number" }],
+    repair,
+    vehicle: base.vehicle,
+    nearby_shops: base.nearby_shops,
+    complete: !!repair && !!base.vehicle,
+    disclaimer: QUOTE_DISCLAIMER,
   };
 }
 

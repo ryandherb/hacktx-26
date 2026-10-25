@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import type { Profile } from "@/lib/api";
 import type { AdvisorState } from "@/lib/advisor/state";
-import { submitProblem } from "@/lib/advisor/service";
+import { getQuote, submitProblem } from "@/lib/advisor/service";
 import { demoAnswer } from "@/lib/demo/answers";
 import { ring } from "./AdvisorPanel";
 import { StepLayout } from "./controls";
@@ -42,14 +42,20 @@ export default function ProblemStep({ profile, state, update }: Props) {
     setSending(true);
     setError(null);
     try {
-      const r = await submitProblem(profile.id, text.trim(), profile);
+      const problem = text.trim();
+      const r = await submitProblem(profile.id, problem, profile);
+      const quoteInput = r.data.quote_input ?? { repair_type: problem, vehicle_model: profile.vehicle_model, vehicle_year: profile.vehicle_year, location: profile.zip_code };
+      // A shop quote only carries over if the problem description didn't change.
+      const manualQuote = state.reportedIssue?.text === problem ? state.manualQuote : null;
+      const quote = await getQuote(profile.id, quoteInput, manualQuote);
       update({
         survey: r.data,
         surveyMocked: r.mocked,
-        step: "situation",
-        situationCard: 0,
-        bankModal: !state.bank, // auto-open the bank connection right after step 1
-        reportedIssue: { text: text.trim(), reportedAt: new Date().toISOString(), estimateFileName: state.estimateFileName },
+        quote: quote.data,
+        quoteMocked: quote.mocked,
+        manualQuote,
+        step: "estimate",
+        reportedIssue: { text: problem, reportedAt: new Date().toISOString(), estimateFileName: state.estimateFileName },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
