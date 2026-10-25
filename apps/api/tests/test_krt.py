@@ -1,0 +1,37 @@
+from app.engine import insurance, krt, valuation
+from app.models.schemas import AffordabilityResult, MaintenanceTask, MarketData
+from app.seeds.loader import get_profile, load_fixture
+
+AFFORD = AffordabilityResult(
+    monthly_income=4600, monthly_spend=3100, savings_balance=9800, monthly_surplus=1500,
+    runway_months=3.2, can_afford_payment=True, max_comfortable_payment=1200,
+)
+
+
+def _market(pid):
+    data = load_fixture("market")[pid]
+    data.setdefault("scheduled_maintenance", [MaintenanceTask(cost=60, interval=5000)])
+    return MarketData(**data)
+
+
+def test_score_returns_monthly_costs():
+    p, m = get_profile("maria"), _market("maria")
+    r = krt.score(p, valuation.current_value(m), AFFORD, m, 3000, load_fixture("nessie")["maria"])
+    assert r.keepResult > 0 and r.tradeResult > 0
+    assert r.refinanceResult == r.keepResult  # no loan to refinance
+
+
+def test_trade_cost_includes_insurance_increase():
+    p, m = get_profile("maria"), _market("maria")
+    snap = load_fixture("nessie")["maria"]
+    price = valuation.default_replacement(m)["price"]
+    down = krt.DEFAULT_DOWN_PCT * price
+    loan = krt.loan_payment(price - down - 4900, krt.DEFAULT_APR, krt.LOAN_TERM_MONTHS)
+    ins_delta = insurance.trade_premium(128, 4900, price) - 128
+    r = krt.score(p, 4900, AFFORD, m, 3000, snap)
+    assert r.tradeResult == round(down / krt.HORIZON + loan + ins_delta, 2)
+
+
+def test_loan_payment():
+    assert krt.loan_payment(0, 0.07, 60) == 0
+    assert round(krt.loan_payment(20000, 0.07, 60), 2) == 396.02
