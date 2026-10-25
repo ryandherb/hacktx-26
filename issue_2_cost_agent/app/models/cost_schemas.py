@@ -193,5 +193,5 @@ class CostAgentHandoff(BaseModel):
         return {
             "car_value": self.car_value,
             "repair_cost": self.repair_cost,
-            "pfo_factors": self.pfo_factors.model_dump(),
+            "pfo_factors": self.pfo_factors,  # krt.score() reads attributes (pfo_factors.apr, ...)
         }

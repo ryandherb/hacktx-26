@@ -136,7 +136,7 @@ for field. There are six questions:
 | Question (`answers` field) | Becomes in `PFOFactors` |
 |---|---|
 | `down_payment` ($) | `down_payment` |
-| `credit_band` (excellent/good/fair/poor/unknown) | `apr` (5.5% / 7% / 11% / 16% / None, so krt uses `DEFAULT_APR`) and `credit_confidence` (high/high/medium/low/low) |
+| `credit_band` (excellent/good/fair/poor/unknown) | `apr` (5.5% / 7% / 11% / 16% / None, so krt falls back to its `CREDIT_CONFIDENCE_APR`) and `credit_confidence` (high/high/medium/low/low) |
 | `other_debt_load` (none/light/heavy) | `other_debt_load` |
 | `upcoming_major_expense` (yes/no) | `upcoming_major_expense` |
 | `income_stability` (growing/steady/at_risk/unsure) | `income_outlook` + `job_stability` |
@@ -154,7 +154,7 @@ The survey doesn't ask about `windfall_expected` (False), `payment_risk_toleranc
 - `repair_cost` is `repair.repair_cost_estimate`, the high end.
 - `car_value` is `vehicle.trade_in_estimate`, because KRT uses it for equity when the car is
   traded in. The private-sale estimate is still in `vehicle` if Ryan wants it.
-- `pfo_factors` is `PFOFactors.model_dump()`.
+- `pfo_factors` is the `PFOFactors` object itself (`krt.score()` reads its attributes).
 
 `handoff.krt_arguments()` returns exactly those three keyword arguments. The route supplies
 `profile`, `afford`, `market`, and `snapshot`.

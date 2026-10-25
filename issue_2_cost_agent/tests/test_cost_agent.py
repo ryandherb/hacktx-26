@@ -406,7 +406,7 @@ def test_handoff_uses_high_end_repair_cost_and_trade_in_value():
     assert handoff.car_value == quote.vehicle.trade_in_estimate > 0
     args = handoff.krt_arguments()
     assert set(args) == {"car_value", "repair_cost", "pfo_factors"}
-    assert args["pfo_factors"]["apr"] == 0.07 and args["pfo_factors"]["down_payment"] == 3000.0
+    assert args["pfo_factors"].apr == 0.07 and args["pfo_factors"].down_payment == 3000.0
 
 
 def test_handoff_refuses_incomplete_quote():
