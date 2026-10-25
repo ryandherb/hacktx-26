@@ -235,7 +235,7 @@ class CostQuoteRequest(BaseModel):
 
 
 class RepairClassification(BaseModel):
-    category: str | None  # REPAIR_CATEGORIES or SYMPTOMS key; None when unrecognized
+    category: str | None  # REPAIR_CATEGORIES, GENERAL_TIERS, or SYMPTOMS key; None when unrecognized
     label: str | None
     kind: Literal["repair", "symptom", "multiple", "unknown"]
     quotable: bool
