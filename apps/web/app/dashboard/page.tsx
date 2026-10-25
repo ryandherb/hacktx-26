@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import AdvisorIntro from "@/components/advisor/AdvisorIntro";
 import AdvisorPanel from "@/components/advisor/AdvisorPanel";
 import BankConnectModal from "@/components/advisor/BankConnectModal";
+import EstimateStep from "@/components/advisor/EstimateStep";
 import MinimizedPill from "@/components/advisor/MinimizedPill";
 import OptionsStep from "@/components/advisor/OptionsStep";
 import ProblemStep from "@/components/advisor/ProblemStep";
+import OptionsPage from "@/components/options/OptionsPage";
 import SituationStep from "@/components/advisor/SituationStep";
 import CarImage from "@/components/dashboard/CarImage";
 import IssuesDrawer from "@/components/dashboard/IssuesDrawer";
@@ -65,8 +67,9 @@ export default function Dashboard() {
   const d = displayFor(profile);
   const title = `${profile.vehicle_year} ${profile.vehicle_model}`;
   const label = `${profile.vehicle_year} Toyota ${profile.vehicle_model}`;
-  const advisorStep = { intro: 0, problem: 1, situation: 2, options: 3 }[advisor.state.step];
+  const advisorStep = { intro: 0, problem: 1, estimate: 1, situation: 2, options: 3 }[advisor.state.step];
   const split = advisor.state.view === "open";
+  const optionsPage = advisor.state.optionsPage && !!advisor.state.options;
 
   return (
     <div className="bg-white text-black">
@@ -109,6 +112,12 @@ export default function Dashboard() {
       </div>
 
       <main className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-6 pb-6 pt-5 md:px-14">
+        {/* Two-slide track: the dashboard (car + advisor panel) and the full-width options page.
+            "View your options" slides the dashboard out to the left; header and footer stay put. */}
+        <div className="relative -mx-6 min-h-0 flex-1 overflow-hidden md:-mx-14">
+          <div className="flex h-full w-[200%] transition-transform duration-700 ease-[cubic-bezier(0.22,0.8,0.2,1)]"
+            style={{ transform: optionsPage ? "translateX(-50%)" : "translateX(0)" }}>
+          <div className="flex h-full min-h-0 w-1/2 flex-col px-6 md:px-14" inert={optionsPage}>
         {/* Opening the advisor slides the car into the left column and reveals the panel on the right. */}
         <div className="grid min-h-0 flex-1 transition-[grid-template-columns] duration-500 ease-out"
           style={{ gridTemplateColumns: split ? "minmax(0,1.08fr) 1px minmax(0,1fr)" : "minmax(0,1fr) 0px minmax(0,0fr)" }}>
@@ -180,14 +189,24 @@ export default function Dashboard() {
                       onStart={() => advisor.update({ step: advisor.state.reportedIssue ? "situation" : "problem" })} />
                   )}
                   {advisor.state.step === "problem" && <ProblemStep profile={profile} state={advisor.state} update={advisor.update} />}
+                  {advisor.state.step === "estimate" && <EstimateStep profile={profile} state={advisor.state} update={advisor.update} />}
                   {advisor.state.step === "situation" && <SituationStep profileId={profile.id} state={advisor.state} update={advisor.update} />}
                   {advisor.state.step === "options" && (
                     <OptionsStep profileId={profile.id} onBack={() => advisor.update({ step: "situation" })}
-                      onStartOver={() => { restart(); advisor.update({ view: "open" }); }} onDone={closeAdvisor} />
+                      onStartOver={() => { restart(); advisor.update({ view: "open" }); }}
+                      onResult={(options, optionsMocked) => advisor.update({ options, optionsMocked })}
+                      onView={() => advisor.update({ optionsPage: true })} />
                   )}
                 </AdvisorPanel>
               </div>
             )}
+          </div>
+        </div>
+          </div>
+          <div className="h-full w-1/2 overflow-y-auto px-6 md:px-14" inert={!optionsPage}>
+            <OptionsPage open={optionsPage} vehicleLabel={label} result={advisor.state.options} mocked={advisor.state.optionsMocked}
+              onBack={() => advisor.update({ optionsPage: false })} />
+          </div>
           </div>
         </div>
       </main>
@@ -197,11 +216,11 @@ export default function Dashboard() {
 
       <VehicleDrawer open={drawer} onClose={closeDrawer} profile={profile} display={d} label={label} />
       <IssuesDrawer open={issuesOpen} onClose={closeIssues} label={label} issue={advisor.state.reportedIssue}
-        optionsReady={advisor.state.step === "options"} onOpenAdvisor={openAdvisor} />
+        optionsReady={advisor.state.step === "options"} quote={advisor.state.quote} onOpenAdvisor={openAdvisor} />
       {advisor.state.bankModal && (
         <BankConnectModal profileId={profile.id} firstName={d.firstName}
           onClose={() => advisor.update({ bankModal: false })}
-          onConnected={(bank) => advisor.update({ bank, bankModal: false, bankSkipped: false })} />
+          onConnected={(bank) => advisor.update({ bank, bankModal: false, bankSkipped: false, situation: { ...advisor.state.situation, down_payment: bank.availableCash } })} />
       )}
       {advisor.state.view === "minimized" && (
         <MinimizedPill stepLabel={advisorStep ? `Step ${advisorStep} of 3` : "Ready to start"} onResume={openAdvisor} />

@@ -28,7 +28,7 @@ const TITLES: Record<CardId, [string, string]> = {
 
 export default function SituationStep({ profileId, state, update }: Props) {
   const a = state.situation;
-  const cards = cardsFor(a);
+  const cards = cardsFor(a, !!state.bank);
   const index = Math.min(state.situationCard, cards.length - 1);
   const card = cards[index];
   const set = (patch: Partial<SituationAnswers>) => update({ situation: { ...a, ...patch } });
@@ -70,7 +70,7 @@ export default function SituationStep({ profileId, state, update }: Props) {
       </div>
 
       <h2 id="advisor-title" tabIndex={-1} className="mt-2 text-[30px] font-extrabold leading-tight tracking-tight outline-none">{title}</h2>
-      <p className="mt-1 text-lg text-neutral-600">{sub}</p>
+      {!(card === "bank" && state.bank) && <p className="mt-1 text-lg text-neutral-600">{sub}</p>}
 
       <div className="mt-5">
         {card === "life_change" && (
@@ -123,7 +123,7 @@ export default function SituationStep({ profileId, state, update }: Props) {
           </div>
         )}
 
-        {card === "bank" && <BankCard state={state} update={update} />}
+        {card === "bank" && <BankCard state={state} update={update} cash={a.down_payment} setCash={(v) => set({ down_payment: v })} />}
         {card === "review" && <Review a={a} cards={cards} go={go} bank={state.bank} />}
 
         {OTHER_DETAILS_CARDS.includes(card) && (
@@ -155,7 +155,7 @@ function Review({ a, cards, go, bank }: { a: SituationAnswers; cards: CardId[]; 
     ["life_change", "Coming up", changes],
     ...(cards.includes("life_details") ? [["life_details", "Details", details] as [CardId, string, string]] : []),
     ["keep_horizon", "Keep the car", a.keep_horizon ?? ""],
-    ["down_payment", "Cash available", money(a.down_payment ?? 0)],
+    ["down_payment", "Cash available", `${money(a.down_payment ?? 0)}${bank ? " · from your bank" : ""}`],
     ["credit_band", "Credit estimate", a.credit_band ?? ""],
     ["car_reliance", "Reliance on car", a.car_reliance ?? ""],
   ] as [CardId, string, string][]).map(([id, k, v]) => [id, k, withNote(id, v)]);
@@ -165,7 +165,7 @@ function Review({ a, cards, go, bank }: { a: SituationAnswers; cards: CardId[]; 
         <div key={id} className="flex items-center gap-6 py-1.5 text-[15px]">
           <dt className="w-36 shrink-0 text-neutral-600">{k}</dt>
           <dd className="flex-1 font-bold">{v}</dd>
-          <button onClick={() => go(cards.indexOf(id))} className={`text-sm underline underline-offset-2 hover:text-[#EB0A1E] ${ring}`}>Edit</button>
+          <button onClick={() => go(Math.max(cards.indexOf(id), 0))} className={`text-sm underline underline-offset-2 hover:text-[#EB0A1E] ${ring}`}>Edit</button>
         </div>
       ))}
     </dl>
@@ -173,7 +173,9 @@ function Review({ a, cards, go, bank }: { a: SituationAnswers; cards: CardId[]; 
 }
 
 // First card of step 2: the bank snapshot (mock Nessie), or a prompt to connect.
-function BankCard({ state, update }: { state: AdvisorState; update: (p: Partial<AdvisorState>) => void }) {
+type BankCardProps = { state: AdvisorState; update: (p: Partial<AdvisorState>) => void; cash: number | null; setCash: (v: number | null) => void };
+
+function BankCard({ state, update, cash, setCash }: BankCardProps) {
   const b = state.bank;
   if (!b) {
     return (
@@ -203,25 +205,38 @@ function BankCard({ state, update }: { state: AdvisorState; update: (p: Partial<
   ];
   return (
     <div>
-      <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-2.5 text-[14px]">
+      <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-2 text-[14px]">
         <span className="flex items-center gap-2 font-bold text-emerald-800">
           <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden><circle cx="10" cy="10" r="9" fill="currentColor" /><path d="m6 10.2 2.6 2.6L14.2 7" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Connected to {b.institution}
         </span>
-        <span className="text-emerald-800/80">{b.accounts.map((x) => `•••• ${x.mask}`).join("  ")}</span>
+        <button onClick={() => update({ bankModal: true })} className={`text-emerald-800/80 underline underline-offset-2 ${ring}`}>Reconnect</button>
       </div>
-      <dl className="mt-3 grid grid-cols-2 gap-3">
+      <dl className="mt-3 grid grid-cols-4 gap-2.5">
         {tiles.map(([k, v]) => (
-          <div key={k} className="rounded-xl border border-neutral-200 px-4 py-3">
-            <dt className="text-[13px] text-neutral-600">{k}</dt>
-            <dd className="text-[24px] font-extrabold tracking-tight">{v}</dd>
+          <div key={k} className="rounded-xl border border-neutral-200 px-3 py-2.5">
+            <dt className="text-[12px] text-neutral-600">{k}</dt>
+            <dd className="text-[20px] font-extrabold tracking-tight">{v}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-[13px] text-neutral-600">
-        {b.carInsurance ? `Car insurance detected: ${money(b.carInsurance)}/mo. ` : ""}Averages from the last 3 months.
-        <button onClick={() => update({ bankModal: true })} className={`ml-2 underline underline-offset-2 ${ring}`}>Reconnect</button>
-      </p>
+      <div className="mt-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#EB0A1E]">ToyotaAI found</p>
+        <ul className="mt-1 space-y-0.5 text-[14px]">
+          {b.insights.map((t) => (
+            <li key={t} className="flex items-start gap-2"><span aria-hidden className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />{t}</li>
+          ))}
+        </ul>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-4 rounded-xl bg-neutral-100 px-4 py-2.5">
+        <div>
+          <p className="text-[14px] font-bold">Available for a repair or down payment</p>
+          <p className="text-[12px] text-neutral-600">Savings minus a one-month cushion. Edit if needed.</p>
+        </div>
+        <div className="w-36 shrink-0 [&_label>span:first-child]:hidden [&_label>span:last-child]:mt-0 [&_label>span:last-child]:bg-white">
+          <MoneyInput label="" value={cash} onChange={(v) => setCash(v == null ? null : Math.min(v, 999999))} />
+        </div>
+      </div>
     </div>
   );
 }
