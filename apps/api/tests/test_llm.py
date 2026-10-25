@@ -488,3 +488,12 @@ def test_explain_retries_stay_inside_time_budget(monkeypatch):
     assert llm.explain(ctx("keep")) == template(ctx("keep"))
     assert len(calls) == 2  # 0s and 6s; a third attempt would start past the 10s budget
     assert calls[0] == llm.EXPLAIN_TIMEOUT_SECONDS and calls[1] <= 4
+
+
+def test_keep_summary_for_big_repair_does_not_say_pays_off(monkeypatch):
+    use_settings(monkeypatch, llm_provider="none")
+    c = ctx("keep")
+    c["krt"] = krt(repair_ratio=0.98)
+    summary = llm.explain(c).summary
+    assert "98% of what your car is worth, but keeping it is still cheaper" in summary
+    assert "pays off" not in summary

@@ -25,7 +25,10 @@ def build(context: dict) -> dict[str, OptionNotes]:
     if not (_num(keep) and _num(trade) and _num(refi)):
         return {}
 
-    has_loan = refi != keep  # equal when there's no loan to refinance
+    # No loan means no refinance payment. (Comparing refi with keep isn't enough: the PFO risk
+    # margin makes them differ slightly even with no loan.)
+    refi_payment = krt.get("refi_payment")
+    has_loan = refi_payment > 0 if _num(refi_payment) else refi != keep
     costs = {"keep": keep, "trade": trade, **({"refinance": refi} if has_loan else {})}
     cheapest = min(costs, key=costs.get)
     repair = facts.get("repair_cost") if _num(facts.get("repair_cost")) else None
