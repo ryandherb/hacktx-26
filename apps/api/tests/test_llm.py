@@ -344,6 +344,47 @@ def test_network_error_falls_back(monkeypatch):
     assert llm.explain(ctx("keep")) == template(ctx("keep"))
 
 
+def test_flaky_404_retries_then_uses_fallback_model(monkeypatch):
+    use_settings(monkeypatch, llm_model="muse-a", llm_fallback_models="muse-b")
+    models = []
+
+    def _post(url, headers=None, json=None, timeout=None):
+        models.append(json["model"])
+        status = 404 if json["model"] == "muse-a" else 200  # Muse's intermittent model_not_found
+        return httpx.Response(
+            status,
+            json={"choices": [{"message": {"role": "assistant", "content": "hi"}}]},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(llm.httpx, "post", _post)
+    assert llm._complete("hello") == "hi"
+    assert models == ["muse-a", "muse-a", "muse-b"]
+
+
+def test_auth_error_is_not_retried(monkeypatch):
+    use_settings(monkeypatch)
+    calls = []
+    monkeypatch.setattr(llm.httpx, "post", fake_post("x", calls, status=401))
+    with pytest.raises(llm.LLMError):
+        llm._complete("hello")
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "provider, model, fallbacks, expected",
+    [
+        ("muse", "muse-spark-1.3", "", ["muse-spark-1.3", "muse-spark-1.2"]),
+        ("muse", "muse-spark-1.2", "", ["muse-spark-1.2"]),
+        ("openai", "gpt-x", "", ["gpt-x"]),
+        ("openai", "gpt-x", " gpt-y, gpt-x ", ["gpt-x", "gpt-y"]),
+    ],
+)
+def test_model_order(monkeypatch, provider, model, fallbacks, expected):
+    use_settings(monkeypatch, llm_provider=provider, llm_model=model, llm_fallback_models=fallbacks)
+    assert llm._models() == expected
+
+
 # --- _complete details ----------------------------------------------------------
 
 

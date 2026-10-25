@@ -54,14 +54,19 @@ def parse_json_object(text: str) -> dict:
     return data
 
 
-def chat(system: str, user: str) -> tuple[str, dict]:
-    """One uncached chat completion. Returns (reply text, usage). Raises on any failure."""
+# muse-spark-1.3 intermittently answers 404 model_not_found for a model it just served, so
+# those (and rate limits, 5xx, timeouts) get one retry, then the next model in the list.
+TRANSIENT_STATUS = {404, 408, 409, 429, 500, 502, 503, 504}
+ATTEMPTS_PER_MODEL = 2
+
+
+def _post(model: str, system: str, user: str) -> httpx.Response:
     s = cost_config.get_cost_settings()
-    response = httpx.post(
+    return httpx.post(
         f"{s.llm_base_url.rstrip('/')}/chat/completions",
         headers={"Authorization": f"Bearer {s.llm_api_key.strip()}"},
         json={
-            "model": s.llm_model,
+            "model": model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "temperature": 0,
             "max_tokens": s.llm_max_tokens,
@@ -69,9 +74,30 @@ def chat(system: str, user: str) -> tuple[str, dict]:
         },
         timeout=s.llm_timeout_seconds,
     )
-    response.raise_for_status()
-    body = response.json()
-    return _message_text(body["choices"][0]["message"]["content"]), body.get("usage") or {}
+
+
+def chat(system: str, user: str) -> tuple[str, dict]:
+    """One uncached chat completion. Returns (reply text, usage). Raises on any failure."""
+    s = cost_config.get_cost_settings()
+    last_exc: Exception | None = None
+    for model in s.llm_models:
+        for _ in range(ATTEMPTS_PER_MODEL):
+            try:
+                response = _post(model, system, user)
+                response.raise_for_status()
+                body = response.json()
+                return _message_text(body["choices"][0]["message"]["content"]), body.get("usage") or {}
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code not in TRANSIENT_STATUS:
+                    raise
+                last_exc = exc
+            except httpx.TimeoutException as exc:  # don't stack timeouts; try the next model
+                last_exc = exc
+                break
+            except httpx.TransportError as exc:  # connection resets
+                last_exc = exc
+            logger.info("Muse %s attempt failed (%s), retrying", model, last_exc)
+    raise last_exc or RuntimeError("No LLM models configured")
 
 
 def complete_json(system: str, user: str) -> dict | None:
@@ -89,7 +115,7 @@ def complete_json(system: str, user: str) -> dict | None:
     try:
         text, usage = chat(system, user)
         data = parse_json_object(text)
-    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+    except (httpx.HTTPError, RuntimeError, KeyError, IndexError, TypeError, ValueError) as exc:
         logger.warning("Muse call failed, using deterministic fallback: %s", exc)
         return None
     logger.info("Muse usage: %s", usage)

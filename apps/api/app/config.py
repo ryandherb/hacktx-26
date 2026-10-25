@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = ""
     llm_base_url: str = ""
+    # Comma-separated models tried after LLM_MODEL on transient failures. Empty uses the
+    # provider default from app/clients/llm.py (muse-spark-1.2 for muse/meta).
+    llm_fallback_models: str = ""
     llm_timeout_seconds: float = 20.0
 
     database_url: str = "sqlite:///./cache.sqlite3"

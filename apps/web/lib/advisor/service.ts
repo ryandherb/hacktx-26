@@ -126,7 +126,7 @@ export type CostQuoteResult = {
 export async function getQuote(profileId: string, quoteInput: PreQuoteInput, manualQuote: ManualQuote | null): Promise<Served<CostQuoteResult>> {
   if (!backendReachable()) return { mocked: true, data: mockQuote(profileId, quoteInput, manualQuote) };
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
+  const timer = setTimeout(() => ctrl.abort(), 20000); // Muse retries + Render cold starts
   try {
     const res = await fetch(`${SURVEY_API}/quote`, {
       method: "POST",

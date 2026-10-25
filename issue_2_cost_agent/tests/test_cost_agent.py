@@ -111,6 +111,27 @@ def test_llm_low_confidence_symptoms_and_unlisted_ids_are_not_quotable(monkeypat
     assert (result.method, result.kind, result.quotable) == ("llm", kind, False)
 
 
+def test_llm_general_tier_prices_unlisted_specific_repair(monkeypatch):
+    fake_llm(monkeypatch, {"category": "general_moderate", "confidence": 0.9, "label": "  Front bumper   replacement "})
+    result = repair_classifier.classify_repair("front bumper is cracked")
+    assert (result.method, result.kind, result.category, result.label) == (
+        "llm", "repair", "general_moderate", "Front bumper replacement")
+    quote = post("/quote", {"quote_input": {**MARIA_INPUT, "repair_type": "front bumper is cracked"}, "mileage": 90000})
+    assert quote["repair"]["label"] == "Front bumper replacement"
+    assert (quote["repair"]["repair_cost_low"], quote["repair"]["repair_cost_high"]) == (440.0, 1430.0)
+
+
+def test_llm_low_confidence_general_tier_is_not_quotable(monkeypatch):
+    fake_llm(monkeypatch, {"category": "general_major", "confidence": 0.5, "label": "Something big"})
+    result = repair_classifier.classify_repair("front bumper")
+    assert (result.kind, result.quotable) == ("unknown", False)
+
+
+def test_keyword_fallback_never_picks_a_general_tier():
+    result = repair_classifier.classify_repair("front bumper is cracked")
+    assert (result.method, result.kind, result.quotable) == ("keyword", "unknown", False)
+
+
 @pytest.mark.parametrize("reply", [None, {"confidence": "high"}, {"category": "brakes", "confidence": 7}])
 def test_llm_failure_or_bad_shape_falls_back_to_keywords(monkeypatch, reply):
     fake_llm(monkeypatch, reply)
@@ -488,6 +509,30 @@ def test_muse_client_returns_none_on_bad_reply_or_http_error(monkeypatch, tmp_pa
     use_settings(monkeypatch, llm_provider="meta", llm_api_key="k", llm_cache_path=str(tmp_path / "c.sqlite3"))
     monkeypatch.setattr(muse.httpx, "post", lambda *a, **k: response)
     assert muse.complete_json("sys", "user") is None
+
+
+def test_muse_client_retries_flaky_404_then_falls_back_to_next_model(monkeypatch, tmp_path):
+    use_settings(monkeypatch, llm_provider="meta", llm_api_key="k", llm_model="muse-a",
+                 llm_fallback_models="muse-b", llm_cache_path=str(tmp_path / "c.sqlite3"))
+    models = []
+
+    def fake_post(url, headers, json, timeout):
+        models.append(json["model"])
+        if json["model"] == "muse-a":
+            return FakeResponse("{}", 404)  # Muse's intermittent model_not_found
+        return FakeResponse('{"category": "brakes", "confidence": 0.9}')
+
+    monkeypatch.setattr(muse.httpx, "post", fake_post)
+    assert muse.complete_json("sys", "user") == {"category": "brakes", "confidence": 0.9}
+    assert models == ["muse-a", "muse-a", "muse-b"]
+
+
+def test_muse_client_does_not_retry_auth_errors(monkeypatch, tmp_path):
+    use_settings(monkeypatch, llm_provider="meta", llm_api_key="k", llm_cache_path=str(tmp_path / "c.sqlite3"))
+    calls = []
+    monkeypatch.setattr(muse.httpx, "post", lambda *a, **k: calls.append(1) or FakeResponse("{}", 401))
+    assert muse.complete_json("sys", "user") is None
+    assert len(calls) == 1
 
 
 def test_muse_client_handles_timeout(monkeypatch, tmp_path):

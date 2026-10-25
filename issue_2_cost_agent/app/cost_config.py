@@ -26,6 +26,8 @@ class CostAgentSettings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = "muse-spark-1.3"
     llm_base_url: str = "https://api.meta.ai/v1"
+    # Comma-separated models tried in order after LLM_MODEL when it fails transiently.
+    llm_fallback_models: str = "muse-spark-1.2"
     llm_timeout_seconds: float = 15.0
     # Muse Spark reasons before answering and those tokens count against max_tokens.
     # "minimal" keeps classify/extract calls at about 50-70 output tokens.
@@ -40,6 +42,11 @@ class CostAgentSettings(BaseSettings):
         if isinstance(value, str) and not value.strip():
             return cls.model_fields[info.field_name].default
         return value
+
+    @property
+    def llm_models(self) -> list[str]:
+        fallbacks = [m.strip() for m in self.llm_fallback_models.split(",") if m.strip()]
+        return list(dict.fromkeys([self.llm_model.strip(), *fallbacks]))
 
     @property
     def llm_enabled(self) -> bool:
