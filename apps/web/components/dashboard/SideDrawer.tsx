@@ -31,10 +31,10 @@ export default function SideDrawer({ open, onClose, title, closeLabel, children 
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby="drawer-title" className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl">
+      <div ref={panel} role="dialog" aria-modal="true" aria-labelledby="drawer-title" className="h-full w-full max-w-md overflow-y-auto overscroll-contain bg-white p-5 shadow-2xl sm:p-6">
         <div className="flex items-start justify-between">
           <h2 id="drawer-title" className="text-2xl font-extrabold tracking-tight text-black">{title}</h2>
-          <button onClick={onClose} className="rounded px-2 py-1 text-neutral-600 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#eb0a1e]" aria-label={closeLabel}>✕</button>
+          <button onClick={onClose} className="-mr-2 -mt-2 flex h-11 w-11 shrink-0 items-center justify-center rounded text-neutral-600 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#eb0a1e]" aria-label={closeLabel}>✕</button>
         </div>
         {children}
       </div>

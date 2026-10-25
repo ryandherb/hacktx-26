@@ -69,7 +69,7 @@ export default function SituationStep({ profileId, state, update }: Props) {
         </span>
       </div>
 
-      <h2 id="advisor-title" tabIndex={-1} className="mt-2 text-[30px] font-extrabold leading-tight tracking-tight outline-none">{title}</h2>
+      <h2 id="advisor-title" tabIndex={-1} className="mt-2 text-[clamp(24px,2.2vw,30px)] font-extrabold leading-tight tracking-tight outline-none">{title}</h2>
       {!(card === "bank" && state.bank) && <p className="mt-1 text-lg text-neutral-600">{sub}</p>}
 
       <div className="mt-5">
@@ -132,7 +132,7 @@ export default function SituationStep({ profileId, state, update }: Props) {
             <input value={a.notes[card] ?? ""} maxLength={300}
               onChange={(e) => set({ notes: { ...a.notes, [card]: e.target.value } })}
               placeholder={card === "life_details" ? "Anything else we should know? (optional)" : "Something else? Type your own answer or other details"}
-              className="w-full rounded-lg border border-neutral-300 px-4 py-2.5 text-[15px] outline-none placeholder:text-neutral-500 focus:border-neutral-800 focus:ring-1 focus:ring-neutral-800" />
+              className="w-full rounded-lg border border-neutral-300 px-4 py-2.5 text-base outline-none sm:text-[15px] placeholder:text-neutral-500 focus:border-neutral-800 focus:ring-1 focus:ring-neutral-800" />
           </label>
         )}
       </div>
@@ -160,12 +160,12 @@ function Review({ a, cards, go, bank }: { a: SituationAnswers; cards: CardId[]; 
     ["car_reliance", "Reliance on car", a.car_reliance ?? ""],
   ] as [CardId, string, string][]).map(([id, k, v]) => [id, k, withNote(id, v)]);
   return (
-    <dl className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 px-5">
+    <dl className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 px-4 sm:px-5">
       {rows.map(([id, k, v]) => (
-        <div key={id} className="flex items-center gap-6 py-1.5 text-[15px]">
-          <dt className="w-36 shrink-0 text-neutral-600">{k}</dt>
-          <dd className="flex-1 font-bold">{v}</dd>
-          <button onClick={() => go(Math.max(cards.indexOf(id), 0))} className={`text-sm underline underline-offset-2 hover:text-[#EB0A1E] ${ring}`}>Edit</button>
+        <div key={id} className="flex items-center gap-3 py-1.5 text-[15px] sm:gap-6">
+          <dt className="w-24 shrink-0 text-neutral-600 sm:w-36">{k}</dt>
+          <dd className="min-w-0 flex-1 font-bold">{v}</dd>
+          <button onClick={() => go(Math.max(cards.indexOf(id), 0))} className={`-mr-2 px-2.5 text-sm max-md:min-h-11 underline underline-offset-2 hover:text-[#EB0A1E] ${ring}`}>Edit</button>
         </div>
       ))}
     </dl>
@@ -188,7 +188,7 @@ function BankCard({ state, update, cash, setCash }: BankCardProps) {
           Connect bank
         </button>
         <div>
-          <button onClick={() => update({ bankSkipped: true })} className={`mt-3 text-[14px] underline underline-offset-4 ${state.bankSkipped ? "font-bold" : "text-neutral-600"} ${ring}`}>
+          <button onClick={() => update({ bankSkipped: true })} className={`mt-3 text-[14px] underline max-md:min-h-11 underline-offset-4 ${state.bankSkipped ? "font-bold" : "text-neutral-600"} ${ring}`}>
             {state.bankSkipped ? "✓ I'll enter my finances myself" : "Enter my finances myself instead"}
           </button>
         </div>
@@ -210,9 +210,9 @@ function BankCard({ state, update, cash, setCash }: BankCardProps) {
           <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden><circle cx="10" cy="10" r="9" fill="currentColor" /><path d="m6 10.2 2.6 2.6L14.2 7" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Connected to {b.institution}
         </span>
-        <button onClick={() => update({ bankModal: true })} className={`text-emerald-800/80 underline underline-offset-2 ${ring}`}>Reconnect</button>
+        <button onClick={() => update({ bankModal: true })} className={`-my-3 py-3 text-emerald-800/80 underline underline-offset-2 ${ring}`}>Reconnect</button>
       </div>
-      <dl className="mt-3 grid grid-cols-4 gap-2.5">
+      <dl className="mt-3 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
         {tiles.map(([k, v]) => (
           <div key={k} className="rounded-xl border border-neutral-200 px-3 py-2.5">
             <dt className="text-[12px] text-neutral-600">{k}</dt>

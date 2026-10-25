@@ -26,7 +26,7 @@ export default function OptionsPage({ open, vehicleLabel, result, mocked, onBack
 
   return (
     <div className="mx-auto flex h-full max-w-[1200px] flex-col">
-      <div className="flex items-center justify-between gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <button onClick={onBack} className={`inline-flex items-center gap-2 rounded-full border-2 border-black px-6 py-2.5 font-bold hover:bg-neutral-50 ${ring}`}>
           <span aria-hidden>←</span> Back to my car
         </button>
@@ -34,17 +34,17 @@ export default function OptionsPage({ open, vehicleLabel, result, mocked, onBack
       </div>
 
       <p className="mt-6 text-sm font-semibold uppercase tracking-[0.14em] text-neutral-500">Your options</p>
-      <h1 ref={heading} tabIndex={-1} className="text-[44px] font-extrabold leading-tight tracking-tight outline-none">
+      <h1 ref={heading} tabIndex={-1} className="text-[clamp(32px,3.2vw,44px)] font-extrabold leading-tight tracking-tight outline-none">
         Your best move: {OPTION_LABELS[top][0]}
       </h1>
 
-      <div className="mt-6 grid grid-cols-3 gap-5">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
         {ranked.map((id) => {
           const best = id === top;
           return (
-            <div key={id} className={`rounded-2xl border-2 p-6 ${best ? "border-[#EB0A1E] shadow-[0_12px_32px_rgba(235,10,30,0.12)]" : "border-neutral-200"}`}>
+            <div key={id} className={`rounded-2xl border-2 p-5 sm:p-6 ${best ? "border-[#EB0A1E] shadow-[0_12px_32px_rgba(235,10,30,0.12)]" : "border-neutral-200"}`}>
               <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${best ? "text-[#EB0A1E]" : "text-transparent"}`}>Best fit</p>
-              <p className="text-[52px] font-extrabold leading-none tracking-tight">{result.scores[id]}<span className="text-2xl">%</span></p>
+              <p className="text-[clamp(36px,3.8vw,52px)] font-extrabold leading-none tracking-tight">{result.scores[id]}<span className="text-2xl">%</span></p>
               <p className="mt-2 text-xl font-extrabold">{OPTION_LABELS[id][0]}</p>
               <p className="text-[15px] text-neutral-600">{OPTION_LABELS[id][1]}</p>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-neutral-200" aria-hidden>
@@ -55,7 +55,7 @@ export default function OptionsPage({ open, vehicleLabel, result, mocked, onBack
         })}
       </div>
 
-      <div className="mt-5 grid grid-cols-[1.4fr_1fr] gap-5">
+      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-[1.4fr_1fr] md:gap-5">
         <div className="flex gap-4 rounded-2xl bg-neutral-100 p-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/advisor/guide-placeholder.png" alt="" className="h-12 w-12 shrink-0 object-contain mix-blend-multiply" />

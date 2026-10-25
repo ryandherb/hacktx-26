@@ -36,7 +36,7 @@ export function MoneyInput({ label, value, onChange, suffix }: { label: string; 
         <span className="text-lg text-neutral-500">$</span>
         <input inputMode="numeric" value={value ?? ""} placeholder="0"
           onChange={(e) => { const n = e.target.value.replace(/[^\d]/g, ""); onChange(n ? Number(n) : null); }}
-          className="w-full bg-transparent px-2 py-3.5 text-lg outline-none" />
+          className="w-full min-w-0 bg-transparent px-2 py-3.5 text-lg outline-none" />
         {suffix && <span className="whitespace-nowrap text-neutral-500">{suffix}</span>}
       </span>
     </label>
@@ -47,7 +47,7 @@ export function MoneyInput({ label, value, onChange, suffix }: { label: string; 
 export function DemoInsert({ label, disabled, onClick }: { label: string; disabled?: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} disabled={disabled}
-      className={`inline-flex items-center gap-1.5 text-[15px] text-neutral-800 hover:text-[#EB0A1E] disabled:opacity-40 ${ring}`}>
+      className={`inline-flex min-h-11 items-center gap-1.5 text-[15px] text-neutral-800 hover:text-[#EB0A1E] disabled:opacity-40 ${ring}`}>
       <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Demo</span>
       <span className="underline underline-offset-4">{label}</span>
     </button>
@@ -58,7 +58,7 @@ export function DemoInsert({ label, disabled, onClick }: { label: string; disabl
 export function StepLayout({ children, footer }: { children: React.ReactNode; footer: React.ReactNode }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">{children}</div>
       {footer}
     </div>
   );
