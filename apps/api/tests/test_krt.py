@@ -1,5 +1,5 @@
 from app.engine import insurance, krt, valuation
-from app.models.schemas import AffordabilityResult, MaintenanceTask, MarketData
+from app.models.schemas import AffordabilityResult, MaintenanceTask, MarketData, PFOFactors
 from app.seeds.loader import get_profile, load_fixture
 
 AFFORD = AffordabilityResult(
@@ -35,3 +35,56 @@ def test_trade_cost_includes_insurance_increase():
 def test_loan_payment():
     assert krt.loan_payment(0, 0.07, 60) == 0
     assert round(krt.loan_payment(20000, 0.07, 60), 2) == 396.02
+
+
+def test_default_pfo_factors_match_no_pfo_factors():
+    p, m = get_profile("maria"), _market("maria")
+    snap = load_fixture("nessie")["maria"]
+    r_none = krt.score(p, 4900, AFFORD, m, 3000, snap)
+    r_default = krt.score(p, 4900, AFFORD, m, 3000, snap, PFOFactors())
+    assert r_none == r_default
+
+
+def test_shaky_finances_raise_trade_and_refinance_but_not_keep():
+    p, m = get_profile("maria"), _market("maria")
+    snap = load_fixture("nessie")["maria"]
+    baseline = krt.score(p, 4900, AFFORD, m, 3000, snap)
+    shaky = PFOFactors(
+        income_outlook="decreasing",
+        job_stability="at_risk",
+        other_debt_load="heavy",
+        upcoming_major_expense=True,
+    )
+    stressed = krt.score(p, 4900, AFFORD, m, 3000, snap, shaky)
+    assert stressed.keepResult == baseline.keepResult
+    assert stressed.tradeResult > baseline.tradeResult
+    assert stressed.refinanceResult > baseline.refinanceResult
+    # trade takes on a brand new loan, so it should absorb more of the risk margin than refinance
+    trade_bump = stressed.tradeResult / baseline.tradeResult
+    refi_bump = stressed.refinanceResult / baseline.refinanceResult
+    assert trade_bump > refi_bump
+
+
+def test_credit_confidence_sets_apr_when_pfo_apr_missing():
+    p, m = get_profile("maria"), _market("maria")
+    snap = load_fixture("nessie")["maria"]
+    low_conf = krt.score(p, 4900, AFFORD, m, 3000, snap, PFOFactors(credit_confidence="low"))
+    high_conf = krt.score(p, 4900, AFFORD, m, 3000, snap, PFOFactors(credit_confidence="high"))
+    # a worse assumed rate should never make the trade cheaper
+    assert low_conf.tradeResult > high_conf.tradeResult
+
+
+def test_explicit_apr_overrides_credit_confidence():
+    p, m = get_profile("maria"), _market("maria")
+    snap = load_fixture("nessie")["maria"]
+    explicit = krt.score(p, 4900, AFFORD, m, 3000, snap, PFOFactors(apr=0.2, credit_confidence="high"))
+    high_conf = krt.score(p, 4900, AFFORD, m, 3000, snap, PFOFactors(credit_confidence="high"))
+    assert explicit.tradeResult > high_conf.tradeResult
+
+
+def test_high_car_usage_raises_keep_cost():
+    p, m = get_profile("maria"), _market("maria")
+    snap = load_fixture("nessie")["maria"]
+    baseline = krt.score(p, 4900, AFFORD, m, 3000, snap)
+    heavy_use = krt.score(p, 4900, AFFORD, m, 3000, snap, PFOFactors(car_usage="high"))
+    assert heavy_use.keepResult > baseline.keepResult
