@@ -13,11 +13,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[1]  # issue_2_cost_agent/ (apps/api/ after unpacking)
 ENV_FILE = ROOT_DIR / "cost_agent.env"
+SHARED_ENV_FILE = ROOT_DIR.parent / "apps" / "api" / ".env"  # shared backend settings
 LLM_PROVIDERS = {"meta", "muse"}
 
 
 class CostAgentSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
+    # Later files win, so cost_agent.env can still override the shared apps/api/.env.
+    model_config = SettingsConfigDict(env_file=(SHARED_ENV_FILE, ENV_FILE), extra="ignore")
 
     llm_provider: str = "none"
     llm_api_key: str = ""

@@ -1,54 +1,96 @@
 "use client";
 
-import { useState } from "react";
-import type { DemoShop } from "@/lib/demo/shops";
+import "leaflet/dist/leaflet.css";
+import { useEffect, useRef, useState } from "react";
+import type { Map as LeafletMap, Marker } from "leaflet";
+import { directionsUrl, nearestDealers, type LatLng } from "@/lib/demo/shops";
 import { ring } from "./AdvisorPanel";
 
-// Nearby repair shops: a stylized map (no map API or key needed, so it works offline at the demo)
-// next to a ranked list. Selecting a shop highlights its pin.
-export default function ShopFinder({ shops }: { shops: DemoShop[] }) {
+const pin = (n: number, active: boolean) =>
+  `<svg viewBox="0 0 24 30" width="${active ? 31 : 26}" height="${active ? 38 : 32}" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))">
+    <path d="M12 29s10-9.3 10-17A10 10 0 0 0 2 12c0 7.7 10 17 10 17z" fill="${active ? "#EB0A1E" : "#3f3f46"}" />
+    <text x="12" y="15.5" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" font-family="system-ui">${n}</text>
+  </svg>`;
+
+// Nearest Toyota dealerships on a real map (Leaflet + Esri tiles, no API key)
+// next to a ranked list. Selecting a dealer highlights and centers its pin.
+export default function ShopFinder({ origin, onSelect }: { origin: LatLng; onSelect?: (name: string) => void }) {
+  const dealers = nearestDealers(origin);
   const [active, setActive] = useState(0);
+  const el = useRef<HTMLDivElement>(null);
+  const map = useRef<LeafletMap | null>(null);
+  const markers = useRef<Marker[]>([]);
+  const L = useRef<typeof import("leaflet") | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Leaflet touches `window` on import, so load it client-side only.
+    import("leaflet").then((leaflet) => {
+      if (cancelled || !el.current) return;
+      L.current = leaflet;
+      const m = leaflet.map(el.current, { zoomControl: false, attributionControl: true, scrollWheelZoom: false });
+      // Esri's light gray basemap + place-name labels: keyless (CARTO now needs an API key, and
+      // OpenStreetMap's own tile servers block apps that don't follow their usage policy).
+      const esri = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_";
+      leaflet.tileLayer(`${esri}Base/MapServer/tile/{z}/{y}/{x}`, {
+        attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, &copy; OpenStreetMap contributors',
+        maxZoom: 16,
+      }).addTo(m);
+      leaflet.tileLayer(`${esri}Reference/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16 }).addTo(m);
+      leaflet.control.zoom({ position: "topright" }).addTo(m);
+      leaflet.marker([origin.lat, origin.lng], {
+        icon: leaflet.divIcon({ className: "", html: '<span style="display:block;width:14px;height:14px;border-radius:9999px;background:#0ea5e9;border:2px solid #fff;box-shadow:0 0 0 6px rgba(14,165,233,.25)"></span>', iconSize: [14, 14] }),
+        keyboard: false,
+        title: "You",
+      }).addTo(m);
+      markers.current = dealers.map((d, i) =>
+        leaflet.marker([d.lat, d.lng], { icon: leaflet.divIcon({ className: "", html: pin(i + 1, i === 0), iconSize: [26, 32], iconAnchor: [13, 32] }), title: d.name })
+          .on("click", () => setActive(i))
+          .addTo(m),
+      );
+      m.fitBounds(leaflet.latLngBounds([[origin.lat, origin.lng], ...dealers.map((d) => [d.lat, d.lng] as [number, number])]), { padding: [28, 28] });
+      map.current = m;
+    });
+    return () => {
+      cancelled = true;
+      map.current?.remove();
+      map.current = null;
+    };
+  }, [origin.lat, origin.lng]);
+
+  useEffect(() => {
+    const leaflet = L.current;
+    if (!leaflet) return;
+    markers.current.forEach((mk, i) => {
+      const on = i === active;
+      mk.setIcon(leaflet.divIcon({ className: "", html: pin(i + 1, on), iconSize: on ? [31, 38] : [26, 32], iconAnchor: on ? [15.5, 38] : [13, 32] }));
+      mk.setZIndexOffset(on ? 1000 : 0);
+    });
+    if (dealers[active]) map.current?.panTo([dealers[active].lat, dealers[active].lng], { animate: true });
+    onSelect?.(dealers[active]?.name ?? "");
+  }, [active]);
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(120px,190px)_minmax(0,1fr)]">
-      <div className="relative h-40 overflow-hidden sm:h-[196px] rounded-xl bg-[#eef1ee]" aria-hidden>
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-          <path d="M-5 78 C 20 70, 35 88, 55 74 S 85 60, 105 66" fill="none" stroke="#c9dceb" strokeWidth="7" />
-          <path d="M0 20 L100 26 M0 50 L100 46 M30 0 L26 100 M62 0 L70 100" stroke="#fff" strokeWidth="3.2" />
-          <path d="M0 35 L100 38 M14 0 L10 100 M84 0 L88 100 M45 0 L48 100" stroke="#fff" strokeWidth="1.6" />
-          <path d="M-5 92 L 105 8" stroke="#f3dca6" strokeWidth="3.6" />
-        </svg>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <span className="absolute -inset-2 animate-ping rounded-full bg-sky-400/40" />
-          <span className="relative block h-3.5 w-3.5 rounded-full border-2 border-white bg-sky-500 shadow" />
-        </span>
-        {shops.map((s, i) => (
-          <span key={s.name} className="absolute -translate-x-1/2 -translate-y-full transition-transform" style={{ left: `${s.x}%`, top: `${s.y}%`, transform: `translate(-50%, -100%) scale(${i === active ? 1.18 : 1})` }}>
-            <svg viewBox="0 0 24 30" className="h-8 w-[26px] drop-shadow">
-              <path d="M12 29s10-9.3 10-17A10 10 0 0 0 2 12c0 7.7 10 17 10 17z" fill={s.kind === "dealer" ? "#EB0A1E" : i === active ? "#111" : "#3f3f46"} />
-              <text x="12" y="15.5" textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff">{i + 1}</text>
-            </svg>
-          </span>
-        ))}
-        <span className="absolute bottom-1.5 left-2 rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500">Sample locations</span>
-      </div>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <div ref={el} className="relative z-0 h-48 overflow-hidden sm:h-[220px] rounded-xl bg-[#eef1ee]" aria-label="Map of nearby Toyota dealerships" role="img" />
 
       <ol className="space-y-1.5">
-        {shops.map((s, i) => (
-          <li key={s.name}>
-            <button onClick={() => setActive(i)} onMouseEnter={() => setActive(i)}
-              className={`flex w-full items-start gap-3 rounded-xl border px-3 py-2 text-left transition ${i === active ? "border-neutral-900 bg-white shadow-sm" : "border-neutral-200 hover:border-neutral-400"} ${ring}`}>
-              <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${s.kind === "dealer" ? "bg-[#EB0A1E]" : "bg-neutral-800"}`}>{i + 1}</span>
+        {dealers.map((d, i) => (
+          <li key={d.name}>
+            <div onClick={() => setActive(i)} onMouseEnter={() => setActive(i)}
+              className={`flex w-full cursor-pointer items-start gap-3 rounded-xl border px-3 py-2 text-left transition ${i === active ? "border-neutral-900 bg-white shadow-sm" : "border-neutral-200 hover:border-neutral-400"}`}>
+              <button onClick={() => setActive(i)} aria-label={`Show ${d.name} on the map`}
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${i === active ? "bg-[#EB0A1E]" : "bg-neutral-800"} ${ring}`}>{i + 1}</button>
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <span className="truncate text-[14px] font-bold">{s.name}</span>
-                  {s.kind === "dealer" && <span className="shrink-0 rounded-full bg-red-50 px-1.5 py-px text-[10px] font-bold text-[#c8091a]">TOYOTA</span>}
-                </span>
+                <span className="block truncate text-[14px] font-bold">{d.name}</span>
+                <span className="block truncate text-[12px] text-neutral-600">{d.address}</span>
                 <span className="block text-[12px] text-neutral-600">
-                  {s.distanceMi} mi · <span className="text-amber-500">★</span> {s.rating} ({s.reviews.toLocaleString()}) · {s.hours}
+                  ~{d.distanceMi.toFixed(1)} mi ·{" "}
+                  <a href={directionsUrl(d)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                    className={`font-semibold underline max-md:inline-flex max-md:min-h-11 max-md:items-center underline-offset-2 hover:text-[#EB0A1E] ${ring}`}>Directions</a>
                 </span>
               </span>
-            </button>
+            </div>
           </li>
         ))}
       </ol>
