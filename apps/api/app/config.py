@@ -11,8 +11,6 @@ class Settings(BaseSettings):
     nessie_api_key: str = ""
     nessie_base_url: str = "http://api.nessieisreal.com"
 
-    serpapi_api_key: str = ""
-
     # LLM (OpenAI-compatible chat completions). LLM_PROVIDER=none uses templates only.
     # LLM_BASE_URL overrides the provider's default URL (see app/clients/llm.py).
     llm_provider: str = "none"

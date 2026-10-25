@@ -16,7 +16,7 @@ Cost Agent (repair quote or manual input) -> PFO Agent (finance Q&A -> structure
 - `apps/api/` FastAPI backend (Python 3, Pydantic v2, httpx)
   - `app/routes.py` endpoints; `app/main.py` app + CORS
   - `app/engine/` deterministic math: `affordability.py`, `valuation.py`, `simulate.py` (planned: `krt.py`, `repair_costs.py`)
-  - `app/clients/` external wrappers: `nessie.py`, `serpapi.py` (SQLite-cached), `llm.py`
+  - `app/clients/` external wrappers: `nessie.py`, `llm.py`
   - `app/models/schemas.py` all request/response models
   - `app/seeds/toyota_profiles.json` synthetic profiles; `app/fixtures/*.json` offline data keyed by profile id
   - `app/config.py` settings from `apps/api/.env`
@@ -50,7 +50,6 @@ npm run lint
   matching TypeScript type in `apps/web/lib/api.ts`.
 - Keep the `simulate.run()` signature stable unless you update `routes.py` and its callers.
 - Backend stays stateless. PFO conversation state lives in the client and is sent each turn.
-- SerpApi calls go through `serpapi.search()` so they are cached. Don't call SerpApi directly.
 - Nessie endpoints and field names should be verified against http://api.nessieisreal.com
   docs before relying on live mode.
 - All data is synthetic. Show the "estimates, not financial advice" disclaimer wherever

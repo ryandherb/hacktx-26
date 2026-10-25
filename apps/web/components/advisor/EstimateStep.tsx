@@ -1,42 +1,49 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Profile } from "@/lib/api";
 import type { AdvisorState } from "@/lib/advisor/state";
 import { getQuote } from "@/lib/advisor/service";
-import { DEMO_SHOPS, readDemoQuote, type ReadQuote } from "@/lib/demo/shops";
+import { zipCenter } from "@/lib/demo/shops";
 import { ring } from "./AdvisorPanel";
 import { MoneyInput, StepLayout } from "./controls";
 import ShopFinder from "./ShopFinder";
 import StepFooter from "./StepFooter";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
-const READ_STEPS = ["Scanning document", "Finding line items", "Reading the total"];
+// The quote upload is a mockup for now: any click "uploads" this file, then we ask for the total.
+const DEMO_FILE = { name: "mechanic-quote.pdf", size: "248 KB" };
 
-type Mode = "summary" | "inspect" | "upload" | "review";
+type Mode = "summary" | "inspect" | "upload";
 type Props = { profile: Profile; state: AdvisorState; update: (p: Partial<AdvisorState>) => void };
 
 // Step 1b, driven by the Cost Agent (issue #2):
 // - quotable repair  -> "summary": estimate range, car value, nearby shops
-// - symptom only     -> "inspect": inspection needed + shops to get it diagnosed
-// - then "upload" the mechanic's quote (or type the total) -> "review" what was read -> apply it.
+// - symptom only     -> "inspect": inspection needed + Toyota dealers on a map to get it diagnosed
+// - then "upload" the mechanic's quote (mock PDF upload) and type its total -> apply it.
 export default function EstimateStep({ profile, state, update }: Props) {
   const q = state.quote;
   const [mode, setMode] = useState<Mode>(q?.repair ? "summary" : "inspect");
   const [amount, setAmount] = useState<number | null>(state.manualQuote?.amount ?? null);
   const [shop, setShop] = useState(state.manualQuote?.shop ?? "");
-  const [reading, setReading] = useState<{ name: string; step: number } | null>(null);
-  const [readQuote, setReadQuote] = useState<ReadQuote | null>(null);
-  const [uploadNote, setUploadNote] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
+  const [upload, setUpload] = useState<"idle" | "uploading" | "done">(state.manualQuote ? "done" : "idle");
+  const [progress, setProgress] = useState(0);
+  const [dealer, setDealer] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
+  useEffect(() => {
+    if (upload !== "uploading" || progress < 100) return;
+    if (timer.current) clearInterval(timer.current);
+    const t = setTimeout(() => setUpload("done"), 250);
+    return () => clearTimeout(t);
+  }, [upload, progress]);
 
   if (!q) return null;
   const repair = q.repair;
   const v = q.vehicle;
-  const shops = DEMO_SHOPS[profile.id] ?? [];
 
   const applyQuote = async (total: number, shopName: string | null) => {
     if (sending || total <= 0) return;
@@ -54,34 +61,28 @@ export default function EstimateStep({ profile, state, update }: Props) {
     }
   };
 
-  const onFile = async (file: File | undefined) => {
-    if (!file || reading) return;
-    setUploadNote(null);
-    setReading({ name: file.name, step: 0 });
-    const timers = READ_STEPS.map((_, i) => setTimeout(() => setReading((r) => r && { ...r, step: i + 1 }), 550 * (i + 1)));
-    const [result] = await Promise.all([readDemoQuote(file), new Promise((r) => setTimeout(r, 550 * READ_STEPS.length + 250))]);
-    timers.forEach(clearTimeout);
-    setReading(null);
-    if (result) {
-      setReadQuote(result);
-      setMode("review");
-    } else {
-      setUploadNote(`We couldn't read “${file.name}” automatically. Type the total from your quote below.`);
-    }
+  const fakeUpload = () => {
+    if (upload !== "idle") return;
+    setUpload("uploading");
+    setProgress(0);
+    timer.current = setInterval(() => {
+      setProgress((p) => Math.min(100, p + 9 + Math.random() * 14));
+    }, 160);
+  };
+
+  const toUpload = () => {
+    if (!shop && dealer) setShop(dealer);
+    setMode("upload");
   };
 
   const toSituation = () => update({ step: "situation", situationCard: 0, bankModal: !state.bank });
   const footers: Record<Mode, React.ReactNode> = {
     summary: <StepFooter step={1} onBack={() => update({ step: "problem" })} disabled={!q.complete} onContinue={toSituation} />,
-    inspect: <StepFooter step={1} onBack={() => update({ step: "problem" })} continueLabel="I have my quote" onContinue={() => setMode("upload")} />,
+    inspect: <StepFooter step={1} onBack={() => update({ step: "problem" })} continueLabel="I have my quote" onContinue={toUpload} />,
     upload: (
       <StepFooter step={1} onBack={() => setMode(repair ? "summary" : "inspect")} busy={sending}
-        disabled={amount == null || amount <= 0 || !!reading} continueLabel="Use this quote"
+        disabled={upload !== "done" || amount == null || amount <= 0} continueLabel="Use this quote"
         onContinue={() => amount != null && applyQuote(amount, shop.trim() || null)} />
-    ),
-    review: (
-      <StepFooter step={1} onBack={() => setMode("upload")} busy={sending} continueLabel="Use this quote"
-        onContinue={() => readQuote && applyQuote(readQuote.total, readQuote.shop)} />
     ),
   };
 
@@ -132,102 +133,68 @@ export default function EstimateStep({ profile, state, update }: Props) {
             <div>
               <p className="text-[15px] font-bold text-amber-900">Inspection needed{q.classification.label ? ` · ${q.classification.label}` : ""}</p>
               <p className="text-[13px] leading-snug text-amber-900/80">
-                This could be several different problems, so we can&rsquo;t price it from a description. A mechanic&rsquo;s diagnosis will give you a real quote.
+                {q.classification.reason}
               </p>
             </div>
           </div>
-          <p className="mb-2 mt-4 text-[14px] font-bold">Get it checked near you</p>
-          <ShopFinder shops={shops} />
+          <p className="mb-2 mt-4 text-[14px] font-bold">Get it checked at a Toyota dealer near you</p>
+          <ShopFinder origin={zipCenter(profile.zip_code)} onSelect={setDealer} />
         </>
       )}
 
       {mode === "upload" && (
         <>
           <h2 id="advisor-title" tabIndex={-1} className="text-[clamp(24px,2.2vw,30px)] font-extrabold leading-tight tracking-tight outline-none">Upload your mechanic&rsquo;s quote</h2>
-          <p className="text-[15px] text-neutral-600">A photo or PDF works. We&rsquo;ll read the line items and total.</p>
+          <p className="text-[15px] text-neutral-600">Add the PDF your shop gave you, then confirm the total.</p>
 
-          <label
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setDragging(false); onFile(e.dataTransfer.files?.[0]); }}
-            className={`mt-3 flex h-[132px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition ${dragging ? "border-[#EB0A1E] bg-red-50/50" : "border-neutral-300 bg-neutral-50 hover:border-neutral-500"}`}>
-            <input ref={fileInput} type="file" accept=".pdf,image/*" className="sr-only" onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }} />
-            {reading ? (
-              <div className="w-64" aria-live="polite">
-                <p className="truncate text-center text-[13px] font-semibold text-neutral-500">{reading.name}</p>
-                <ul className="mt-2 space-y-1">
-                  {READ_STEPS.map((s, i) => (
-                    <li key={s} className={`flex items-center gap-2 text-[14px] ${i < reading.step ? "text-black" : "text-neutral-400"}`}>
-                      <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] text-white ${i < reading.step ? "bg-emerald-600" : i === reading.step ? "animate-pulse bg-neutral-400" : "bg-neutral-200"}`}>{i < reading.step ? "✓" : ""}</span>
-                      {s}
-                    </li>
-                  ))}
-                </ul>
+          {upload === "idle" ? (
+            <button onClick={fakeUpload}
+              className={`mt-3 flex h-[120px] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-neutral-300 bg-neutral-50 transition hover:border-neutral-500 ${ring}`}>
+              <svg viewBox="0 0 24 24" className="h-8 w-8 text-neutral-500" aria-hidden><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15v4h14v-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <span className="mt-2 text-[15px]"><span className="font-bold underline underline-offset-4">Upload PDF</span></span>
+              <span className="text-[12px] text-neutral-500">Your mechanic&rsquo;s written quote</span>
+            </button>
+          ) : (
+            <div className="mt-3 flex items-center gap-3 rounded-2xl border border-neutral-200 px-4 py-3" aria-live="polite">
+              <span className="flex h-10 w-9 shrink-0 items-center justify-center rounded-md bg-red-50 text-[10px] font-extrabold text-[#c8091a]">PDF</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-bold">{DEMO_FILE.name}</p>
+                {upload === "uploading" ? (
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-200">
+                    <div className="h-full rounded-full bg-[#EB0A1E] transition-[width] duration-200" style={{ width: `${progress}%` }} />
+                  </div>
+                ) : (
+                  <p className="flex items-center gap-1.5 text-[12px] font-semibold text-emerald-700">
+                    <svg viewBox="0 0 12 12" className="h-3 w-3" aria-hidden><path d="m2.5 6.3 2.2 2.2 4.8-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    Uploaded · {DEMO_FILE.size}
+                  </p>
+                )}
               </div>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" className="h-8 w-8 text-neutral-500" aria-hidden><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15v4h14v-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                <p className="mt-2 text-[15px]"><span className="font-bold underline underline-offset-4">Choose a file</span> or drag it here</p>
-                <p className="text-[12px] text-neutral-500">PDF, JPG, or PNG</p>
-              </>
-            )}
-          </label>
-          <p role="status" className="mt-1.5 min-h-[18px] text-[13px] text-neutral-600">
-            {uploadNote ?? (
-              <a href="/demo/sample-mechanic-quote.pdf" download className={`inline-flex items-center max-md:min-h-11 gap-1.5 hover:text-[#EB0A1E] ${ring}`}>
-                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Demo</span>
-                <span className="underline underline-offset-4">Download the sample mechanic&rsquo;s quote</span>
-              </a>
-            )}
-          </p>
+              {upload === "done" && (
+                <button onClick={() => setUpload("idle")} className={`text-[13px] text-neutral-500 underline max-md:min-h-11 underline-offset-4 hover:text-[#EB0A1E] ${ring}`}>Remove</button>
+              )}
+            </div>
+          )}
 
-          <div className="mt-2 flex items-center gap-3 text-[12px] font-semibold uppercase tracking-wider text-neutral-400">
-            <span className="h-px flex-1 bg-neutral-200" /> or type the total <span className="h-px flex-1 bg-neutral-200" />
-          </div>
-          <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.4fr]">
-            <MoneyInput label="" value={amount} onChange={(n) => setAmount(n == null ? null : Math.min(n, 100000))} />
-            <label className="block">
-              <span className="sr-only">Shop name (optional)</span>
-              <input value={shop} onChange={(e) => setShop(e.target.value)} maxLength={200} placeholder="Shop name (optional)"
-                className="mt-1.5 w-full rounded-lg border border-neutral-300 px-4 py-2.5 text-[16px] outline-none placeholder:text-neutral-500 focus:border-neutral-800 focus:ring-1 focus:ring-neutral-800" />
-            </label>
-          </div>
-        </>
-      )}
-
-      {mode === "review" && readQuote && (
-        <>
-          <h2 id="advisor-title" tabIndex={-1} className="text-[clamp(24px,2.2vw,30px)] font-extrabold leading-tight tracking-tight outline-none">Does this look right?</h2>
-          <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-200">
-            <div className="flex items-start justify-between gap-4 bg-neutral-50 px-4 py-2.5">
-              <div>
-                <p className="text-[15px] font-bold">{readQuote.shop}</p>
-                <p className="text-[12px] text-neutral-600">{readQuote.vehicle} · {readQuote.date}</p>
+          {upload === "done" && (
+            <>
+              <p className="mt-4 text-[14px] font-bold">What&rsquo;s the total on your quote?</p>
+              <p className="text-[13px] text-neutral-600">We can&rsquo;t read quotes automatically yet, so type the total and shop from the PDF.</p>
+              <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.4fr]">
+                <MoneyInput label="" value={amount} onChange={(n) => setAmount(n == null ? null : Math.min(n, 100000))} />
+                <label className="block">
+                  <span className="sr-only">Shop name (optional)</span>
+                  <input value={shop} onChange={(e) => setShop(e.target.value)} maxLength={200} placeholder="Shop name (optional)"
+                    className="mt-1.5 w-full rounded-lg border border-neutral-300 px-4 py-2.5 text-[16px] outline-none placeholder:text-neutral-500 focus:border-neutral-800 focus:ring-1 focus:ring-neutral-800" />
+                </label>
               </div>
-              <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                <svg viewBox="0 0 12 12" className="h-3 w-3" aria-hidden><path d="m2.5 6.3 2.2 2.2 4.8-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                Read from your quote
-              </span>
-            </div>
-            <ul className="divide-y divide-neutral-100 px-4">
-              {readQuote.items.map((it) => (
-                <li key={it.description} className="flex justify-between gap-4 py-1 text-[13px]">
-                  <span className="text-neutral-700">{it.description}</span>
-                  <span className="tabular-nums">{money(it.amount)}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex items-center justify-between border-t border-neutral-200 px-4 py-2.5">
-              <span className="text-[14px] font-bold">Quote total</span>
-              <span className="text-[24px] font-extrabold tabular-nums">{money(readQuote.total)}</span>
-            </div>
-          </div>
-          <p className="mt-2 text-[12px] text-neutral-500">Diagnosis: {readQuote.diagnosis} Demo: sample quote recognized.</p>
+            </>
+          )}
         </>
       )}
 
       {error && <p role="alert" className="mt-2 text-sm text-[#c8091a]">{error}</p>}
-      {mode !== "review" && mode !== "upload" && (
+      {mode !== "upload" && (
         <p className="mt-3 text-[11px] leading-snug text-neutral-500">
           {q.disclaimer}{state.quoteMocked && " Demo mode: repair quote service offline, showing a sample estimate."}
         </p>
