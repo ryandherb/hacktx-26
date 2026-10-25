@@ -49,9 +49,12 @@ DEFAULT_BASE_URLS = {
 DEFAULT_MODELS = {"meta": "muse-spark-1.3", "muse": "muse-spark-1.3"}
 # Muse Spark reasons before answering; "minimal" keeps those tokens from eating max_tokens.
 DEFAULT_REASONING_EFFORT = {"meta": "minimal", "muse": "minimal"}
-# Models tried after the main one when LLM_FALLBACK_MODELS is empty. muse-spark-1.3
-# intermittently answers 404 model_not_found for a model it just served.
-DEFAULT_FALLBACK_MODELS = {"meta": ["muse-spark-1.2"], "muse": ["muse-spark-1.2"]}
+# Models tried after the main one when LLM_FALLBACK_MODELS is empty. muse-spark-1.3 and
+# 1.2 intermittently answer 404 model_not_found for a model they just served; 1.1 is steadier.
+DEFAULT_FALLBACK_MODELS = {
+    "meta": ["muse-spark-1.2", "muse-spark-1.1"],
+    "muse": ["muse-spark-1.2", "muse-spark-1.1"],
+}
 # Retried once on the same model, then the next model is tried. Timeouts skip the retry.
 TRANSIENT_STATUS = {404, 408, 409, 429, 500, 502, 503, 504}
 ATTEMPTS_PER_MODEL = 2

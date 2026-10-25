@@ -415,8 +415,8 @@ def test_timeout_skips_to_next_model(monkeypatch):
 @pytest.mark.parametrize(
     "provider, model, fallbacks, expected",
     [
-        ("muse", "muse-spark-1.3", "", ["muse-spark-1.3", "muse-spark-1.2"]),
-        ("muse", "muse-spark-1.2", "", ["muse-spark-1.2"]),
+        ("muse", "muse-spark-1.3", "", ["muse-spark-1.3", "muse-spark-1.2", "muse-spark-1.1"]),
+        ("muse", "muse-spark-1.2", "", ["muse-spark-1.2", "muse-spark-1.1"]),
         ("openai", "gpt-x", "", ["gpt-x"]),
         ("openai", "gpt-x", " gpt-y, gpt-x ", ["gpt-x", "gpt-y"]),
     ],
