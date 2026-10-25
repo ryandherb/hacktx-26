@@ -10,8 +10,6 @@ class ServiceRecord(BaseModel):
 
 
 class Profile(BaseModel):
-    """Synthetic Toyota customer profile."""
-
     id: str
     name: str
     nessie_customer_id: str | None = None
@@ -77,6 +75,20 @@ class PFOFactors(BaseModel):
 
     credit_confidence: Literal["low", "medium", "high"] = "medium"
 
+class SuggestedModel(BaseModel):
+    name: str
+    price: float
+    kind: str  # new | cpo | used
+    seats: int
+    mpg: float
+    body: str
+    down_payment: float
+    new_payment: float
+    insurance_delta: float
+    fuel_delta: float
+    monthly_cost: float
+    reason: str = ""
+
 class KRTResult(BaseModel):
     keepResult: float
     refinanceResult: float
@@ -84,16 +96,20 @@ class KRTResult(BaseModel):
     repair_ratio: float
     pr_runway: float
     remaining_life: float
+    new_payment: float
+    refi_payment: float
+    suggested_models: list[SuggestedModel]
+    trade_affordable: bool
 
 class AnalysisResult(BaseModel):
-    profile_id: str
-    curve: list[CurvePoint]
-    crossover_month: int | None
+    reccomendation: Literal["keep", "refinance", "trade"]
     result: KRTResult
-    reccomendation: str # "keep" | "trade" | "refinance"
-    affordability: AffordabilityResult
-    market: MarketData
-    explanation: str
+    new_monthly_payment: float
+    
+    suggested_models: list[SuggestedModel] | None = None 
+    
+    apr: float
+    down_payment: float
 
 
 class CarFundRequest(BaseModel):

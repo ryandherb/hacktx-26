@@ -28,8 +28,24 @@ export type Affordability = {
 export type Market = {
   current_vehicle_value_low: number;
   current_vehicle_value_high: number;
+  scheduled_maintenance: { cost: number; interval: number }[];
   replacement_options: { name: string; price: number; kind: string }[];
   repair_quotes: { shop: string; estimate: number; source: string }[];
+};
+
+export type SuggestedModel = {
+  name: string;
+  price: number;
+  kind: string;
+  seats: number;
+  mpg: number;
+  body: string;
+  down_payment: number;
+  new_payment: number;
+  insurance_delta: number;
+  fuel_delta: number;
+  monthly_cost: number;
+  reason: string;
 };
 
 export type KRTResult = {
@@ -39,6 +55,10 @@ export type KRTResult = {
   repair_ratio: number;
   pr_runway: number;
   remaining_life: number;
+  new_payment: number;
+  refi_payment: number;
+  suggested_models: SuggestedModel[];
+  trade_affordable: boolean;
 }
 
 export type PFOFactors = {

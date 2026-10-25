@@ -1,0 +1,17 @@
+{
+  "Corolla Hybrid": {"seats": 5, "mpg": 50, "body": "sedan"},
+  "Corolla Cross": {"seats": 5, "mpg": 32, "body": "suv"},
+  "Corolla": {"seats": 5, "mpg": 35, "body": "sedan"},
+  "Camry Hybrid": {"seats": 5, "mpg": 51, "body": "sedan"},
+  "Camry": {"seats": 5, "mpg": 32, "body": "sedan"},
+  "Prius": {"seats": 5, "mpg": 54, "body": "hatchback"},
+  "RAV4 Hybrid": {"seats": 5, "mpg": 40, "body": "suv"},
+  "RAV4": {"seats": 5, "mpg": 30, "body": "suv"},
+  "Highlander Hybrid": {"seats": 8, "mpg": 36, "body": "suv"},
+  "Highlander": {"seats": 8, "mpg": 24, "body": "suv"},
+  "Grand Highlander": {"seats": 8, "mpg": 24, "body": "suv"},
+  "Sienna": {"seats": 8, "mpg": 36, "body": "minivan"},
+  "Tacoma": {"seats": 5, "mpg": 21, "body": "truck"},
+  "Tundra": {"seats": 6, "mpg": 20, "body": "truck"},
+  "4Runner": {"seats": 7, "mpg": 17, "body": "suv"}
+}
